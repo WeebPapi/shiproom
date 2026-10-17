@@ -31,7 +31,7 @@ These are scoped implementation recommendations, chosen to make the request conc
 
 ## Implementation ledger
 
-- Documentation foundation: written; local links, JSON example, and Markdown fences validated; GitHub publication pending.
+- Documentation foundation: written and validated; published in the public [WeebPapi/shiproom repository](https://github.com/WeebPapi/shiproom) on `master`.
 - App scaffold / local commands: not started.
 - Auth, team membership, invitations: not started.
 - Linear OAuth/context and GitHub repository connection: not started.
@@ -54,3 +54,4 @@ If billing or setup blocks a provider, use the relevant documented fallback and 
 
 - **2026-10-17 — documentation baseline:** captured user clarifications, two planning demo paths, agent doc-maintenance rules, architecture contracts, provider comparison/REA assessment, and four-developer delivery gates. Application functionality is still unimplemented. Provider documentation was reviewed; no provider integration was exercised.
 - **2026-10-17 — documentation checks:** nine Markdown files and 35 local links checked; JSON example parsed and code fences balanced. Reviewed scope consistency against calendar + `.ics`, in-app-only delivery, automatic issue creation, and live/upload parity. Application tests are not applicable before scaffolding.
+- **2026-10-17 — GitHub publication:** created the public repository and pushed the documentation baseline (`e82523b`); verified public visibility, default branch `master`, and matching remote commit. No app or live integration is deployed.
