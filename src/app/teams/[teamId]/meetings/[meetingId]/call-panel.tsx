@@ -34,6 +34,7 @@ export function CallPanel(props: { teamId: string; meetingId: string; isOrganize
   useEffect(() => {
     if (!join) return;
     let cancel = false;
+    let speech: SpeechRec | null = null;
     const started = Date.now();
     joinedAt.current = started;
     void (async () => {
@@ -46,7 +47,9 @@ export function CallPanel(props: { teamId: string; meetingId: string; isOrganize
         iframeStyle: { position: "absolute", inset: "0", width: "100%", height: "100%", border: "0" },
       });
       frameRef.current = frame;
-      const browser = () => startBrowserSpeech(started, browserCues, speechRef, setStatus);
+      const browser = () => {
+        speech = startBrowserSpeech(started, browserCues, speechRef, setStatus) ?? speech;
+      };
       frame.on("transcription-started", () => setStatus("Daily transcription is on."));
       frame.on("transcription-error", (event) => {
         setStatus(`Daily transcription did not start${event.errorMsg ? `: ${event.errorMsg}` : ""}. Capturing this microphone instead.`);
@@ -71,7 +74,7 @@ export function CallPanel(props: { teamId: string; meetingId: string; isOrganize
     })().catch(() => setError("The call could not be opened in this browser."));
     return () => {
       cancel = true;
-      speechRef.current?.stop();
+      speech?.stop();
       frameRef.current?.destroy();
       frameRef.current = null;
     };
@@ -109,7 +112,7 @@ export function CallPanel(props: { teamId: string; meetingId: string; isOrganize
     router.refresh();
   }
 
-  if (!props.dailyReady) return <p className="text-warning">Daily isn't set up on this server yet.</p>;
+  if (!props.dailyReady) return <p className="text-warning">Daily is not set up on this server yet.</p>;
 
   return (
     <div className="space-y-3">
@@ -126,7 +129,7 @@ export function CallPanel(props: { teamId: string; meetingId: string; isOrganize
         >
           <label className="flex items-start gap-2">
             <input type="checkbox" checked={consented} onChange={(event) => setConsented(event.target.checked)} className="mt-1" />
-            <span>Transcribe this call in English. Agreed tasks can become Linear issues. Microphone, camera, and screen sharing use Daily's controls.</span>
+            <span>Transcribe this call in English. Agreed tasks can become Linear issues. Microphone, camera, and screen sharing use the Daily controls.</span>
           </label>
           <button type="submit" className={buttonClass.primary} disabled={!consented || pending}>
             {pending ? "Starting…" : "Start call"}
@@ -194,13 +197,13 @@ function startBrowserSpeech(
   cues: RefObject<Cue[]>,
   speechRef: RefObject<SpeechRec | null>,
   setStatus: (status: string) => void,
-) {
-  if (speechRef.current) return;
+): SpeechRec | null {
+  if (speechRef.current) return speechRef.current;
   const speechWindow = window as Window & { SpeechRecognition?: new () => SpeechRec; webkitSpeechRecognition?: new () => SpeechRec };
   const ctor = speechWindow.SpeechRecognition ?? speechWindow.webkitSpeechRecognition;
   if (!ctor) {
     setStatus("Daily transcription is unavailable, and this browser has no speech recognition.");
-    return;
+    return null;
   }
   const recognition = new ctor() as SpeechRec;
   recognition.continuous = true;
@@ -220,4 +223,5 @@ function startBrowserSpeech(
   speechRef.current = recognition;
   recognition.start();
   setStatus("Capturing this microphone with browser speech recognition. This is not Daily transcription.");
+  return recognition;
 }
