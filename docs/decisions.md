@@ -58,6 +58,8 @@ If billing or setup blocks a provider, use the relevant documented fallback and 
 
 ## Change and verification log
 
+- **2026-10-17 — Supabase agent connection initiated:** added the user's project-scoped Supabase HTTP MCP server to local Codex configuration and verified its enabled URL with `codex mcp get supabase`. The add command automatically started browser OAuth; user sign-in/authorization and live tool access remain pending. No database changes were made and no optional agent-skill package was installed.
+
 - **2026-10-17 — storage setup guidance:** user's Supabase screenshot shows bucket `shiproom-audio`, private visibility, size restriction disabled, and MIME restriction enabled with no list entered. Adopted that bucket name in the setup/architecture contracts and documented a 25 MB cap plus initial audio MIME allowlist. Saving settings, access policies, and actual uploads remain unverified.
 
 - **2026-10-17 — setup preparation:** verified GitHub and Vercel CLI identity; created and locally linked Vercel project `shiproom` under `weebpapis-projects`, then configured and inspected Next.js / Node 24.x. Recorded dedicated Linear workspace and manual onboarding decisions, switched the active extraction recommendation to the existing OpenAI account, added configuration templates/ignores and exact callback contracts. Current Linear connector sees only ARCI; no workspace was changed. No app, provider integration, billing signup, or model request was executed.
