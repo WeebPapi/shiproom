@@ -25,7 +25,7 @@ A and C agree provider helpers and credential boundaries; B and C agree transcri
 
 - Assign lane owners and a deployment owner; confirm credentials for Supabase, Daily, Deepgram, Linear, GitHub, Gemini, and Inngest privately.
 - Confirm Daily paid transcription/webhook access in hour 1. If unavailable, declare upload the guaranteed capture path immediately.
-- B checks a short Georgian sample in Deepgram and, if API access is available, HappyScribe; obtain native-speaker review. Check Daily Nova-3/Georgian configuration separately. Record quality, latency, account access, and the selected provider before polishing capture. Language-list support alone does not pass this gate.
+- B checks a short Georgian sample in the selected Deepgram Nova-3 model, using the [shared vocabulary reference](transcription-vocabulary.md); obtain native-speaker review. Check Daily model/language/keyterm forwarding separately. Record quality, latency, account access, and selected hints before polishing capture. Provider choice is settled; language-list support alone does not pass the quality gate.
 - A scaffolds once, commits the lockfile, records actual commands/environment variables, and creates shared schemas from [Architecture](architecture.md).
 - Establish real Linear issue creation with a preallocated UUID and read-only GitHub context retrieval. Smoke-test the selected extraction model with synthetic text.
 - D establishes the shell/context dialog using the agreed contract; fixtures are visibly labeled temporary. B proves media independently.

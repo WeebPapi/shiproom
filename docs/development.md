@@ -26,6 +26,7 @@ Names below are proposed, not consumed by current code. The scaffold owner must 
 - `GITHUB_APP_ID`, `GITHUB_APP_PRIVATE_KEY`: selected-repository installation access for private context. Store installation/team mappings in the database. Public-only context fallback must be visible in status; do not request broad write scopes to save setup time.
 - `DAILY_API_KEY`, `DAILY_WEBHOOK_SECRET`: server room/transcript operations and base64 webhook HMAC secret. The browser receives only short-lived room tokens.
 - `DEEPGRAM_API_KEY`: server upload transcription; document callback authentication/correlation secrets if that mode is used.
+- Vocabulary is checked-in UTF-8 data in [transcription-vocabulary.json](transcription-vocabulary.json), with [usage guidance](transcription-vocabulary.md). The future integration should load a relevant subset and add authorized meeting context; do not introduce a second hand-maintained hint list.
 - `GEMINI_API_KEY`, `GEMINI_MODEL`: server extraction; initial researched model is in [Integrations](integrations.md). Confirm account access and structured output in a real smoke test before pinning.
 - `INNGEST_EVENT_KEY`, `INNGEST_SIGNING_KEY`: durable workflow transport and verification; local SDK/dev-server configuration must match the selected version. Record deployment synchronization instructions.
 

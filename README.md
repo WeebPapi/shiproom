@@ -16,7 +16,7 @@ Shiproom brings a simple, Linear-inspired meeting experience together with Linea
 4. Use [Delivery](docs/delivery.md) to divide the 24-hour build across four developers.
 5. Follow [Development](docs/development.md) for the planned setup and verification workflow.
 
-[Integrations](docs/integrations.md) records provider choices, costs, permissions, and the REA assessment. [Decisions and status](docs/decisions.md) separates user requirements, engineering defaults, open prerequisites, and actual progress.
+[Integrations](docs/integrations.md) records provider choices, costs, permissions, and the REA assessment. [Transcription vocabulary](docs/transcription-vocabulary.md) explains the reusable English/Georgian [hint catalog](docs/transcription-vocabulary.json). [Decisions and status](docs/decisions.md) separates user requirements, engineering defaults, open prerequisites, and actual progress.
 
 ## The hackathon demo
 
@@ -25,7 +25,7 @@ Shiproom brings a simple, Linear-inspired meeting experience together with Linea
 
 Both paths use the same processing pipeline. Audio upload is the fallback if live calling or transcript capture misses the delivery gate. Calendar booking uses an in-app calendar and downloadable `.ics` invites. Ticket delivery is in-app only.
 
-The initial engineering recommendation is Next.js + TypeScript, Supabase, Daily calls/transcription, Deepgram Nova-3 for uploaded audio, a schema-constrained Gemini Flash extraction step, and Inngest for durable processing. English and Georgian transcription are targets; Georgian quality and the live provider configuration require an early sample check. HappyScribe is a documented Georgian-capable batch alternative. Provider accounts and an end-to-end smoke test are still required; see [Integrations](docs/integrations.md).
+Deepgram Nova-3 is the chosen transcription provider for live calls and uploaded audio. The initial engineering recommendation is Next.js + TypeScript, Supabase, Daily for calls with its integrated Deepgram transcription as the first live path, a schema-constrained Gemini Flash extraction step, and Inngest for durable processing. English and Georgian transcription are targets; Georgian quality, vocabulary hints, and the live provider configuration require a sample check. Provider accounts and an end-to-end smoke test are still required; see [Integrations](docs/integrations.md).
 
 ## Living documentation
 
