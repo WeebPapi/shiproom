@@ -2,26 +2,54 @@
 
 ## Current repository
 
-This repository contains documentation and setup files, including `.env.example` and `.gitignore`. There is no `package.json`, application scaffold, database migration, test suite, CI pipeline, or deployed web app. `npm install`, `npm run dev`, and application checks are therefore not valid instructions yet. Follow [provider setup](setup.md) for the account checklist and prepared Vercel project.
+The identity-lane skeleton exists: a Next.js 16.4 App Router app (TypeScript, Tailwind 4, npm, Node 24), Supabase SSR auth, one checked-in schema migration with RLS, and focused tests. Media, transcription, extraction, Inngest, and issue publication are not built. No CI pipeline or deployment exists. Read [AGENTS.md](../AGENTS.md) before editing; scope is [Product](product.md), boundaries are [Architecture](architecture.md).
 
-Read [AGENTS.md](../AGENTS.md) before editing. The authoritative scope is [Product](product.md); implementation boundaries are in [Architecture](architecture.md). The local project path is not a portable setup requirement.
+This Next.js version differs from older training data. Read the relevant guide in `node_modules/next/dist/docs/` before using a Next.js API (for example, `middleware` is now `src/proxy.ts`). `next dev` appends a Next.js agent-rules block to `AGENTS.md`; keep it committed.
 
-## First scaffold handoff
+## Local setup and commands
 
-The identity lane creates one Next.js App Router TypeScript scaffold. The prepared Vercel project uses Node.js 24.x; align local development and pin the actual supported Node version in the scaffold. Setup found local Node.js 22.13.1; no global runtime was changed. Use npm initially and commit its lockfile; if the team chooses another package manager, update this document and the decision log at the same time.
+Tested on 2026-10-17 with Node 24.21.0 and npm 11.19.0.
 
-Add Tailwind and an accessible component set only as needed. Use provider components for media before recreating them. Keep provider secrets and database administration in server-only modules. Do not add multiple auth systems or ORMs for hypothetical future needs; Supabase's client and SQL migrations suffice for this initial design.
+```bash
+nvm use            # .nvmrc pins Node 24; package.json engines is 24.x
+npm install
+cp .env.example .env.local   # only if you don't have one; fill values privately
+npm run dev        # http://localhost:3000
+```
 
-The scaffold change must replace this section with **tested, exact instructions** for installing dependencies, starting the app and local Inngest server, applying schema/RLS migrations, callback/webhook URLs, and running build/typecheck/lint/focused tests. Maintain the existing placeholder-only `.env.example` and `.gitignore`; preserve any ignored `.env.local`. Implement the callback paths in [Architecture](architecture.md). Document working script names from `package.json`; do not merely retain aspirational commands.
+| Script | What it does | Last result |
+| --- | --- | --- |
+| `npm run dev` | Next.js dev server | Smoke-tested: signed-out redirects, `/login`, callbacks |
+| `npm run build` | Production build (works without `.env.local`; pages render a setup notice) | Passed |
+| `npm run typecheck` | `tsc --noEmit` | Passed |
+| `npm run lint` | ESLint (Next.js config) | Passed |
+| `npm test` | Vitest: contracts, crypto, timezone conversion, and RLS against the migration in PGlite | 22 passed |
+
+Without `NEXT_PUBLIC_SUPABASE_URL`/`NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` the app shows "Shiproom isn't configured yet" instead of crashing. Missing server keys produce explicit "not configured" states (Connections page → Server setup), never fake success. There is no local Inngest server yet; the workflow lane adds it with `/api/inngest`.
+
+## Database migrations
+
+Schema, constraints, RLS, RPCs, and `shiproom-audio` storage policies live in `supabase/migrations/`. **They are not applied to any hosted project yet.** Apply them to the team's canonical Supabase project with either:
+
+- Dashboard: **SQL Editor → New query**, paste `supabase/migrations/20261017130000_initial_schema.sql`, run once.
+- CLI: `npx supabase link --project-ref <ref>` then `npx supabase db push` (needs the database password; not tested here).
+
+Run it once per project; it is not idempotent. Afterward, confirm with a signed-in request or the Table Editor that `public.teams` exists. `npm test` loads every migration into PGlite with stub Supabase roles (`anon`, `authenticated`, `service_role`) and `auth`/`storage` schemas. Add new migrations as new timestamped files; never edit an applied one. Generated Supabase TypeScript types are not set up; query results are typed at the call site.
+
+## Auth and callback URLs
+
+- Supabase Auth → URL Configuration must allow `<origin>/auth/callback`. GitHub's OAuth app callback stays `https://<project-ref>.supabase.co/auth/v1/callback`, and the GitHub provider must be enabled on the **same** project as `NEXT_PUBLIC_SUPABASE_URL`.
+- Linear OAuth app redirect: `<origin>/api/integrations/linear/callback`, scopes `read,issues:create`. Connect requires `LINEAR_CLIENT_ID`, `LINEAR_CLIENT_SECRET`, `CREDENTIAL_ENCRYPTION_KEY`, and `SUPABASE_SERVICE_ROLE_KEY`.
+- `/api/webhooks/daily`, `/api/webhooks/deepgram`, and `/api/inngest` are not implemented (they 404). The media and workflow lanes own them; `src/proxy.ts` already excludes them from session handling.
 
 ## Configuration inventory to implement
 
-Names below are proposed, not consumed by current code. The scaffold owner must reconcile them with the SDK versions actually installed and update this inventory. Public-prefixed values are deliberately public; every other value must remain server-side.
+The app currently reads `NEXT_PUBLIC_APP_URL`, `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` (`src/lib/env.ts`), and `SUPABASE_SERVICE_ROLE_KEY`, `CREDENTIAL_ENCRYPTION_KEY`, `LINEAR_CLIENT_ID`, `LINEAR_CLIENT_SECRET` (`src/lib/server/config.ts`). Other names are only checked for presence on the Connections page until their lane consumes them. Public-prefixed values are deliberately public; every other value must remain server-side.
 
 - `NEXT_PUBLIC_APP_URL`: canonical app origin and callback/link base; use an explicit local origin for development.
 - `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`: browser Supabase project connection. RLS protects access; the public key is not a team authorization mechanism.
 - `SUPABASE_SERVICE_ROLE_KEY`: privileged server access only. Configure the GitHub login OAuth app/client credentials through the Supabase dashboard, with its required auth callback.
-- `CREDENTIAL_ENCRYPTION_KEY`: base64-encoded 32 random bytes for authenticated encryption of stored provider tokens; document the encryption envelope and rotation when implemented.
+- `CREDENTIAL_ENCRYPTION_KEY`: base64-encoded 32 random bytes. Provider tokens are stored as `v1.<iv>.<tag>.<ciphertext>` (AES-256-GCM, associated data `<teamId>:<provider>`) in `private.connection_secrets`, reachable only through `service_role` RPCs. No key rotation yet; changing the key invalidates stored tokens (reconnect Linear).
 - `LINEAR_CLIENT_ID`, `LINEAR_CLIENT_SECRET`: OAuth app credentials; registered callback must match the implemented server route exactly. Per-team access/refresh tokens belong in encrypted connection storage, not public env variables.
 - `GITHUB_APP_ID`, `GITHUB_APP_PRIVATE_KEY`: selected-repository installation access for private context. Store installation/team mappings in the database. Public-only context fallback must be visible in status; do not request broad write scopes to save setup time.
 - `DAILY_API_KEY`, `DAILY_WEBHOOK_SECRET`: server room/transcript operations and base64 webhook HMAC secret. The browser receives only short-lived room tokens.
@@ -32,7 +60,7 @@ Names below are proposed, not consumed by current code. The scaffold owner must 
 
 Verify the intended hosting plan's request durations, upload limits, scheduled jobs, and billing allowances. Register HTTPS OAuth/webhook endpoints for deployment and a supported local tunnel if needed. Never paste tokens into docs, tickets, example URLs, fixtures, terminal recordings, or screenshots. Product setup UI should ask for authorization through OAuth rather than displaying environment variable names to end users.
 
-The Vercel project is created and linked locally. Supabase, GitHub login, and the audio bucket are configured as recorded in [Setup](setup.md); Linear, Daily, Deepgram, Inngest, OpenAI, and `service_role` credentials are still missing. No application integration has been exercised. Do not invent `npm` scripts until the scaffold exists.
+Provider status is in [Setup](setup.md#agent-visible-status). No application integration has been exercised end to end.
 
 ## Contribution workflow
 

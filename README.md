@@ -6,7 +6,7 @@ Browser-based meetings that turn developer conversations into project work.
 
 Shiproom brings a simple, Linear-inspired meeting experience together with Linear project context and GitHub repository context. Teams schedule a planning call or start a huddle, talk normally, and receive links to automatically created `[shiproom]` Linear issues. Each issue explains the agreed work and cites the conversation behind it.
 
-**Status: specification plus partial provider setup; no application scaffold.** This repository contains documentation, a starter icon, and an environment template. Vercel and Supabase projects exist; GitHub login OAuth and the private audio bucket are configured. There is no `package.json`, install command, deployed demo, schema, or working integration yet. Remaining setup and architecture constraints are in [Setup](docs/setup.md) and [Architecture](docs/architecture.md). Requirements below describe the intended product; they are not claims of implemented behavior.
+**Status: identity-lane skeleton; nothing deployed or verified end to end.** The Next.js app has GitHub sign-in, explicit teams and invitations, Linear/GitHub context connections, the meeting context dialog, an inbox, and a checked-in Supabase schema with row-level security. The schema is not yet applied to a hosted project, and calls, transcription, extraction, and issue creation are not built. Run it with `npm install && npm run dev`; full commands and migration steps are in [Development](docs/development.md). Remaining setup is in [Setup](docs/setup.md). Requirements below describe the intended product; they are not claims of implemented behavior.
 
 ## Start here
 
@@ -25,7 +25,7 @@ Shiproom brings a simple, Linear-inspired meeting experience together with Linea
 
 Both paths use the same processing pipeline. Audio upload is the fallback if live calling or transcript capture misses the delivery gate. Calendar booking uses an in-app calendar and downloadable `.ics` invites. Ticket delivery is in-app only.
 
-Deepgram Nova-3 is the chosen transcription provider for live calls and uploaded audio. Use Next.js + TypeScript, Supabase, Daily for calls with its integrated Deepgram transcription as the first live path, OpenAI structured extraction using the user's existing API account, and Inngest for durable processing. English and Georgian transcription are targets; Georgian quality, vocabulary hints, and the live provider configuration require a sample check. Provider accounts and an end-to-end smoke test are still required; see [Integrations](docs/integrations.md).
+Deepgram Nova-3 is the chosen transcription provider for live calls and uploaded audio. Use Next.js + TypeScript, Supabase, Daily for calls with its integrated Deepgram transcription as the first live path, OpenAI structured extraction using the user's existing API account, and Inngest for durable processing. The build is English-first; Georgian stays a selectable target whose quality check is deferred until the English path works. Provider accounts and an end-to-end smoke test are still required; see [Integrations](docs/integrations.md).
 
 ## Living documentation
 

@@ -12,7 +12,7 @@ Linear is the central project/work connector. Shiproom still owns membership, me
 
 ## Scope for 24 hours
 
-Deliver one planning workflow with two entry paths, S1 and S2 below. The live-call path is preferred; upload is a deliberately supported fallback. Target desktop Chrome/Edge first, four authenticated participants, English and preferably Georgian speech, one Linear workspace per Shiproom team, and one GitHub repo plus one Linear team/project per meeting. Georgian is a preferred product requirement, subject to an early quality gate; do not silently retain an English-only assumption. Other limits are engineering defaults, not permanent product limits.
+Deliver one planning workflow with two entry paths, S1 and S2 below. The live-call path is preferred; upload is a deliberately supported fallback. Target desktop Chrome/Edge first, four authenticated participants, English and preferably Georgian speech, one Linear workspace per Shiproom team, and one GitHub repo plus one Linear team/project per meeting. **Build English-first** ([D16](decisions.md#confirmed-user-requirements)): English is the default language and the demo priority. Georgian remains a selectable language and a product target, but its quality work is deferred until the English path works; do not remove the `ka` option or the Georgian contract. Other limits are engineering defaults, not permanent product limits.
 
 Required scope:
 
@@ -28,7 +28,7 @@ Deferred: Google/Outlook calendar sync, email delivery, guest/anonymous access, 
 ## S1: planning with selected context
 
 1. Organizer opens **Schedule call** or **Start huddle**.
-2. A shared modal offers title/agenda, attendees, transcription language (English or Georgian), Linear team, project filtered by team, and GitHub repository from connected sources. Scheduling also asks for start/end and timezone. Show loading, disconnected, empty, and permission-denied states in selectors.
+2. A shared modal offers title/agenda, attendees, transcription language (English by default, or Georgian), Linear team, project filtered by team, and GitHub repository from connected sources. Scheduling also asks for start/end and timezone. Show loading, disconnected, empty, and permission-denied states in selectors.
 3. Organizer selects context or explicitly chooses **Let Shiproom figure it out** for either missing field. Show that agreed tasks will create issues automatically after the call and that participants receive in-app links.
 4. Participants authenticate, accept transcription notice, and join. Present selected context and links alongside the call; GitHub information is read-only.
 5. Team agrees concrete work. Organizer ends the call; processing continues even if every browser closes.
@@ -73,6 +73,6 @@ Persist one inbox entry per participant per created task immediately after the s
 - **AC6:** uploaded audio reaches the same extraction/publication behavior as live capture. Capture failure never becomes a fabricated or silently incomplete transcript.
 - **AC7:** refreshing results, duplicate events, and retrying after an external timeout do not duplicate issues or notifications. Partial success remains visible and recoverable.
 - **AC8:** empty/no-action conversations create no tickets; invalid model output creates none; rejected ideas are not published. Unauthorized users cannot read meetings, media, source context, or inbox entries.
-- **AC9 (Georgian target):** a native-speaker-reviewed Georgian planning sample, including English developer terms and a rejected idea, preserves agreed work, negation, names, repo/project references, and source timestamps through transcription and issue extraction. Check live and upload separately; passing upload does not prove live support. Preserve original Georgian transcript/evidence. Disclose any Georgian limitation if its gate fails; UI localization and unrestricted bilingual code-switching are not implied.
+- **AC9 (Georgian target, deferred behind English-first):** a native-speaker-reviewed Georgian planning sample, including English developer terms and a rejected idea, preserves agreed work, negation, names, repo/project references, and source timestamps through transcription and issue extraction. Check live and upload separately; passing upload does not prove live support. Preserve original Georgian transcript/evidence. Disclose any Georgian limitation if its gate fails; UI localization and unrestricted bilingual code-switching are not implied.
 
 See [Delivery](delivery.md) for the verification procedure and explicit fallback gates. These checks define the reliability bar for the demo.

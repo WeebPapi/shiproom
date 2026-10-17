@@ -1,6 +1,6 @@
 # Architecture and shared contracts
 
-Status: proposed implementation contract. No schema, routes, or services described here exist yet. [Product](product.md) owns behavior; this file owns the technical boundaries. Change shared contracts here and in code together.
+Status: implementation contract. The identity-lane skeleton implements the schema (checked in, not yet applied to a hosted project), auth and Linear callbacks, and shared contracts in `src/lib/contracts.ts`; media, workflow, and publication pieces described here do not exist yet. [Product](product.md) owns behavior; this file owns the technical boundaries. Change shared contracts here and in code together.
 
 ## System boundaries
 
@@ -14,10 +14,10 @@ Inngest runs durable post-call steps through Next.js routes. No always-on media 
 
 ## Callback paths to implement
 
-These paths are reserved for provider configuration; no route exists yet. Register exact origins/paths, and update this contract and provider settings together if changed:
+These paths are reserved for provider configuration. Register exact origins/paths, and update this contract and provider settings together if changed:
 
-- `/auth/callback`: Next.js Supabase PKCE session exchange. GitHub's OAuth callback instead points to `https://<project-ref>.supabase.co/auth/v1/callback`.
-- `/api/integrations/linear/callback`: server Linear OAuth code exchange and state verification.
+- `/auth/callback` (**implemented**): Next.js Supabase PKCE session exchange; only same-origin `next` paths are honored. GitHub's OAuth callback instead points to `https://<project-ref>.supabase.co/auth/v1/callback`.
+- `/api/integrations/linear/callback` (**implemented**): verifies the short-lived HttpOnly state cookie and owner role, exchanges the code, binds one Linear organization per team, and stores encrypted tokens.
 - `/api/webhooks/daily`: signed Daily handshake and event ingestion.
 - `/api/webhooks/deepgram`: upload result ingestion with persisted per-attempt authentication/correlation.
 - `/api/inngest`: SDK serve endpoint for durable functions; use the SDK's supported methods and signing verification.
@@ -28,27 +28,32 @@ See [Setup](setup.md) for local and deployed registration order. Endpoints must 
 
 Binding for the first scaffold and later lanes. Provisioning facts live in [Setup](setup.md); do not treat that checklist as implemented product behavior.
 
-- **No schema yet.** There are no tables, RLS policies, or storage policies. Identity lane writes checked-in migrations from the model below. Do not invent dashboard tables or grant blanket authenticated storage access. Bucket `shiproom-audio` exists with size/MIME limits only.
+- **Schema is checked in, not applied.** `supabase/migrations/20261017130000_initial_schema.sql` implements the model below with RLS, column grants, and `shiproom-audio` policies (objects at `<team_id>/<meeting_id>/<file>`; only the organizer of a pending `upload` meeting may insert; team members may read; no browser update/delete). Add changes as new migrations; do not invent dashboard tables. Browser roles may write only teams (via `create_team`), invitations, meetings (user-context columns), invitees, profile display name, and notification read state. Everything provider-derived is `service_role`-only.
 - **Reserved routes must fail closed.** Implement the callback paths as real handlers that reject invalid input and unauthorized callers. Do not register Daily, Deepgram, or Inngest webhooks, and do not acknowledge provider events as success, until signature verification exists on an HTTPS origin.
 - **GitHub login ≠ repository access.** Login OAuth is already configured in Supabase. `GITHUB_APP_*` is unset; the documented demo fallback is public `WeebPapi/shiproom`. Do not request the broad `repo` scope.
+- **Meeting Linear IDs are revalidated at publication.** The create-meeting action checks Linear team/project IDs against the connected workspace, but RLS cannot, so a member calling PostgREST directly could store arbitrary Linear ID strings on their own meeting. Publication must recheck the destination against the team's connection before any write (already required below).
 - **Linear destination is not ARCI.** App OAuth (`read,issues:create`) and the dedicated **Shiproom** workspace do not exist yet. The connected Linear MCP/workspace is ARCI and must not be used for issues, teams, or projects.
 - **Uniqueness is not write-safety.** A database unique constraint does not make Linear issue creation idempotent. Persist UUID v4 issue IDs before the external write; reconcile on retry. See [External-write safety](#external-write-safety).
 - **Service role bypasses RLS.** Every team, meeting, context, upload, and notification operation still needs an explicit server-side authorization check. Browser code never receives provider API keys or `service_role`.
 - **Do not deploy docs-only.** Use the existing Vercel project after the scaffold is buildable. Do not create a second Vercel or Supabase project. Region is already Tokyo; do not recreate the project to chase Frankfurt.
 - **Live/upload/extraction/Inngest are later lanes.** The skeleton owns identity, membership, shared contracts, and honest pending states. Media, transcription, extraction, and issue publication are out of skeleton scope.
 
-## Suggested code layout
-
-Create only the directories used by the first slice:
+## Code layout
 
 ```text
-src/app/                 pages, route handlers, server actions
-src/components/          app shell, context dialog, meeting/result UI
+src/app/                 pages and route handlers (team pages under teams/[teamId]/)
+src/components/          shared UI primitives and navigation
 src/lib/contracts.ts     shared validation schemas and derived TS types
-src/lib/server/          auth, database and provider operations (server-only)
-src/inngest/             client and meeting-processing function
+src/lib/actions/         server actions; each re-checks the session and role
+src/lib/server/          auth (data access layer), config, crypto, Linear/GitHub, queries (server-only)
+src/lib/supabase/        user-scoped server/browser clients and the service-role client
+src/proxy.ts             session refresh and signed-out redirect (optimistic only)
 supabase/migrations/     checked-in SQL schema, constraints and access policies
+supabase/tests/          RLS tests against the migrations in PGlite
+src/inngest/             not yet created; workflow lane adds client and functions
 ```
+
+Use `requireMembership`/`findMembership` from `src/lib/server/auth.ts` before every team-scoped operation, and `createAdminClient()` only after that check.
 
 Keep one validation schema per boundary and infer its TypeScript type. Do not duplicate hand-written API types in four workstreams or add a generic provider/plugin framework.
 

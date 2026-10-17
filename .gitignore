@@ -4,8 +4,13 @@
 .vercel/
 *.pem
 
-# App build artifacts (the scaffold is a separate task)
+# App build artifacts
 node_modules/
 .next/
 out/
+build/
+coverage/
 *.tsbuildinfo
+next-env.d.ts
+.DS_Store
+npm-debug.log*

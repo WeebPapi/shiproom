@@ -10,15 +10,15 @@ Agents: read **Agent-visible status** and [Architecture remaining constraints](a
 | --- | --- | --- |
 | GitHub repo | **configured** | Public [WeebPapi/shiproom](https://github.com/WeebPapi/shiproom), `master`. |
 | Vercel project | **configured, not deployed** | [weebpapis-projects / shiproom](https://vercel.com/weebpapis-projects/shiproom), ID `prj_qQNcfxoVxlZPMtqLYmYoSih9ibRf`. Next.js, Node **24.x**, root `.`. No Git auto-deploy, no production URL. Do not create another project. Do not deploy the docs-only tree. |
-| Supabase project | **configured** | `shiproom-dev`, ref `fnrdatkgwdtsqmvstrlp`, org weebpapi's projects, Free, **Tokyo `ap-northeast-1`** (not Frankfurt). GitHub repo linked. **No migrations.** MCP login is not app credentials. |
+| Supabase project | **configured; schema not applied** | `shiproom-dev`, ref `fnrdatkgwdtsqmvstrlp`, org weebpapi's projects, Free, **Tokyo `ap-northeast-1`** (not Frankfurt). GitHub repo linked. Migration is checked in (`supabase/migrations/`) but **not applied**; see [Development](development.md#database-migrations). The Supabase MCP returned "You do not have permission" for this ref on 2026-10-17. MCP login is not app credentials. |
 | Supabase Auth URLs | **configured** | Site URL `http://localhost:3000`. Allowed redirect includes `http://localhost:3000/auth/callback`. |
 | GitHub login OAuth | **configured in Supabase** | OAuth App **Shiproom Login**, id `3940221`, owner WeebPapi, homepage `http://localhost:3000`, callback `https://fnrdatkgwdtsqmvstrlp.supabase.co/auth/v1/callback`. GitHub provider enabled. Client secret lives in Supabase, not `.env.local`. Sign-in is **unverified** until the PKCE route exists. |
-| Storage bucket | **configured, no RLS** | `shiproom-audio`: private, 25 MB restrict on, MIME allowlist saved. **Zero storage policies.** Identity lane adds ownership RLS with schema. |
+| Storage bucket | **configured; policies checked in, not applied** | `shiproom-audio`: private, 25 MB restrict on, MIME allowlist saved. Ownership policies are in the checked-in migration and take effect only once it is applied. |
 | Local `.env.local` | **partial** | Present: `NEXT_PUBLIC_APP_URL`, `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`, `CREDENTIAL_ENCRYPTION_KEY`, `DAILY_WEBHOOK_SECRET`, `OPENAI_MODEL`. **Missing:** `SUPABASE_SERVICE_ROLE_KEY`, `OPENAI_API_KEY`, `DAILY_API_KEY`, `DEEPGRAM_API_KEY`, `LINEAR_CLIENT_*`, `INNGEST_*`, `GITHUB_APP_*`. Never print values. |
 | Linear workspace | **not created** | Need dedicated **Shiproom** workspace, team identifier **SHIP**, projects **Shiproom MVP** and **Shiproom Demo**, OAuth app `read,issues:create`, redirect `http://localhost:3000/api/integrations/linear/callback`. Connected Linear MCP still sees **ARCI**. Do not use or modify ARCI. |
 | Daily / Deepgram / Inngest | **unauthenticated** | Dashboards hit login/signup. No API keys in `.env.local`. Do not register webhooks until HTTPS routes exist. |
 | Private GitHub App | **not created** | Public-repo demo fallback is `WeebPapi/shiproom`. Do not request `repo` write scopes. |
-| App scaffold | **not started** | No `package.json`, routes, or schema. Local Node is 22.13.1; Vercel is 24.x — pin the scaffold to 24. |
+| App scaffold | **implemented, not deployed** | Next.js 16.4 identity-lane skeleton; Node 24 pinned (`.nvmrc`, `engines`). Build/typecheck/lint/tests pass locally. Commands: [Development](development.md#local-setup-and-commands). |
 
 Configured means a dashboard resource exists. Credentials present means the ignored local env has a non-empty value. Verified means a live check passed. GitHub login, Linear OAuth, Daily transcription, Deepgram upload, OpenAI extraction, and Inngest jobs are **not verified**.
 

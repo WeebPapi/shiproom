@@ -19,6 +19,7 @@ Last updated: 2026-10-17. Update this file for relevant decisions and verified p
 - **D13 — call provider:** use Daily alongside Deepgram, with integrated transcription billed separately from free call allowances. Start with Daily Prebuilt.
 - **D14 — Linear setup:** create a dedicated **Shiproom** workspace, not the connected ARCI projects workspace/team. Proposed destinations are **Shiproom MVP** for build work and **Shiproom Demo** for generated demo issues.
 - **D15 — account setup:** the user wants an exact manual checklist, has Supabase/Vercel accounts and an OpenAI API key, and no AI Studio account. Use the existing OpenAI API account for extraction; no Gemini signup is required.
+- **D16 — English-first (2026-10-17):** build and demo English first. Georgian stays a selectable language (the `en`/`ka` contract is unchanged) and a product target, but the default is `en` and Georgian quality work (AC9) is deferred until the English path works. The BTU Georgian dataset is not an ASR evaluation source or a committable resource; see [Integrations](integrations.md#georgian-and-happyscribe).
 
 ## Initial engineering defaults
 
@@ -33,15 +34,17 @@ These are scoped implementation recommendations, chosen to make the request conc
 - **E7 — demo bounds:** four authenticated users, desktop Chrome/Edge, English and preferably Georgian speech with explicit language selection; uploads up to 25 MB/15 minutes, up to ten grounded tasks, bounded context reads. Georgian has an early quality gate; broader languages and unrestricted code-switching need later verification.
 - **E8 — deployment:** Vercel web app, hosted Supabase, Inngest Cloud, hosted Daily. Confirm account/hosting limits during setup; do not turn a docs recommendation into an unapproved paid signup.
 - **E9 — REA:** optional future investigation tool, not the app base or runtime. Document/manifest assessment only; see [Integrations](integrations.md).
+- **E10 — scaffold choices:** Next.js 16.4 App Router with `cacheComponents` turned off (nearly every page reads the session; without it, conventional dynamic rendering applies). Supabase SSR + RLS with explicit column grants; user-authored rows go through the user's client or `auth.uid()`-checked RPCs, provider-derived rows through `service_role` after an explicit membership check. No ORM or generated DB types yet. RLS is tested against the real migration in-process with PGlite and Supabase role/schema stubs.
 
 ## Implementation ledger
 
 - Documentation foundation: written and validated; published in the public [WeebPapi/shiproom repository](https://github.com/WeebPapi/shiproom) on `master`.
 - Setup preparation: [manual checklist and skeleton handoff](setup.md), `.env.example`, and secret/build ignore rules written. Vercel `weebpapis-projects/shiproom` created, linked locally, and verified as Next.js / Node 24.x. No Git auto-deployment connection or app deployment yet. Supabase `shiproom-dev` (`fnrdatkgwdtsqmvstrlp`, Tokyo), GitHub login OAuth, and private `shiproom-audio` bucket settings are configured; Linear/Daily/Deepgram/Inngest/OpenAI keys and the app scaffold are not. ARCI has not been modified.
-- App scaffold / local commands: not started.
-- Auth, team membership, invitations: not started.
-- Linear OAuth/context and GitHub repository connection: not started.
-- Calendar/huddles/context UI: not started.
+- App scaffold / local commands: **implemented** (Next.js 16.4, npm, Node 24 pinned); build, typecheck, lint and tests pass locally. Not deployed.
+- Database schema/RLS/storage policies: **implemented** as checked-in migration `supabase/migrations/20261017130000_initial_schema.sql`; RLS verified in PGlite only. **Not applied** to any hosted Supabase project.
+- Auth, team membership, invitations: **implemented**, not verified live (needs applied schema and an enabled GitHub provider on the project in `.env.local`).
+- Linear OAuth/context and GitHub repository connection: **implemented** (Linear OAuth with encrypted token storage; public-repo allowlist). Not verified: no Linear OAuth app or `service_role` key yet.
+- Calendar/huddles/context UI: **partially implemented**: shell, home list of upcoming/recent meetings, shared context dialog (schedule/huddle), meeting placeholder, inbox, members, connections. Calendar grid view and `.ics` not built.
 - Live calls and durable transcription: not started.
 - Upload fallback and normalization: not started.
 - Inference/extraction and durable workflow: not started.
@@ -56,6 +59,7 @@ Assign the four developer lane owners and H0 start time. These block claims of a
 
 Still required before claiming integrations:
 
+- Apply the checked-in migration to the team Supabase project `fnrdatkgwdtsqmvstrlp` ([Development](development.md#database-migrations)), or to one shared replacement project the team agrees on. It is not applied to any project the team uses yet.
 - Put `SUPABASE_SERVICE_ROLE_KEY` and `OPENAI_API_KEY` in ignored `.env.local` (user has an OpenAI key). Do not paste them into chat.
 - Create dedicated Linear workspace **Shiproom** (team **SHIP**, projects **Shiproom MVP** / **Shiproom Demo**) and the OAuth app. Do not use ARCI.
 - Sign into Daily, Deepgram, and Inngest; copy keys locally. Confirm Daily paid transcription/webhook eligibility. Do not register webhook URLs yet.
@@ -66,6 +70,11 @@ Still required before claiming integrations:
 If billing or setup blocks a provider, use the relevant documented fallback and record the change. Unfinished self-service onboarding must be disclosed if the demo relies on a preconfigured team. Do not cut authorization, evidence, or duplicate safety to claim the full scope is complete.
 
 ## Change and verification log
+
+- **2026-10-17 — migration trial:** applied `supabase/migrations/20261017130000_initial_schema.sql` unchanged via Supabase MCP `apply_migration` to a throwaway project (success; 14 public tables) and created the private `shiproom-audio` bucket. That project has since been paused for deletion and is not used. Security advisor findings: RLS-without-policy INFO on `private.connection_secrets`, `processing_requests`, `provider_events` (intended service-role-only) and WARN that `create_team`/`accept_invitation` are callable by `authenticated` (intended; both check `auth.uid()`). No end-to-end login has run.
+
+- **2026-10-17 — identity-lane skeleton:** added the Next.js app, Supabase SSR GitHub PKCE sign-in (`/auth/callback`), explicit team creation and owner invitations (hashed tokens, verified-email match, 7-day expiry, revoke), member removal, Linear OAuth connect/callback with state cookie and AES-256-GCM encrypted tokens, public GitHub repository allowlist, shared zod contracts, server-side meeting creation with context/attendee/timezone validation, and the shell (home, context dialog, meeting placeholder, inbox, members, connections). Checks run: `npm run typecheck`, `npm run lint`, `npm test` (22 passed, including 12 RLS checks in PGlite), `npm run build` (passed). Dev-server smoke test: signed-out `/`, `/teams/…` and `/invite/…` redirect to `/login?next=…`; `/login` renders; `/auth/callback` without a code returns to `/login?error=signin_failed`; Linear callback without valid state returns 400. Findings: the `.env.local` present at test time pointed to a throwaway Supabase project with GitHub sign-in disabled. The migration was not applied to the team project; the Supabase MCP denied read access to `fnrdatkgwdtsqmvstrlp`. No sign-in, Linear, or GitHub call was exercised end to end.
+- **2026-10-17 — English-first and BTU dataset:** user decided to build English-first (D16): `en` is the default, Georgian stays selectable and deferred. A separate check found the BTU Georgian dataset is text-only, lacks developer vocabulary, is CC BY-NC 4.0 and contains real public-figure names, so it is not used as an ASR eval set or committed.
 
 - **2026-10-17 — dashboard setup recorded, skeleton unblocked:** GitHub login OAuth App **Shiproom Login** (`3940221`) is enabled in Supabase; Auth redirects include `http://localhost:3000/auth/callback`; `shiproom-audio` is private with 25 MB and the documented MIME allowlist (still zero storage policies). Public Supabase URL and publishable key are in ignored `.env.local`; `service_role` and remaining provider keys are not. Project region is Tokyo, not Frankfurt. Linear/Daily/Deepgram/Inngest remain behind login. Remaining implementation constraints were added to [Architecture](architecture.md); [Setup](setup.md) now has an agent-visible status table. No app scaffold, deploy, webhook registration, or schema.
 
