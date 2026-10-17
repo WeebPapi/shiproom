@@ -1,0 +1,11 @@
+# Local credentials and platform state
+.env*
+!.env.example
+.vercel/
+*.pem
+
+# App build artifacts (the scaffold is a separate task)
+node_modules/
+.next/
+out/
+*.tsbuildinfo

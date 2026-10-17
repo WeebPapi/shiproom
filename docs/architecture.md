@@ -8,9 +8,21 @@ Use one Next.js App Router application in TypeScript. Server route handlers/acti
 
 Supabase supplies Postgres, Auth, and private media storage. GitHub sign-in establishes personal identity. Linear OAuth connects a workspace to a Shiproom team; Shiproom membership remains explicit. Use a GitHub App with selected-repository read permissions for shared private repository access. Public demo repositories can be a documented early fallback.
 
-Daily carries audio/video/screen share. Deepgram Nova-3 is the selected transcription model for live calls and uploaded audio; Daily's integrated Deepgram route is the first live path to verify, while uploads use Deepgram directly. Both normalize into the same transcript contract. Read the shared [vocabulary catalog and usage guide](transcription-vocabulary.md) when constructing provider requests; choose a relevant bounded subset and confirm live hint forwarding instead of hardcoding separate lists. A bounded Gemini JSON extraction step produces data; deterministic server code validates it and calls Linear. A model does not receive arbitrary tool authority.
+Daily carries audio/video/screen share. Deepgram Nova-3 is the selected transcription model for live calls and uploaded audio; Daily's integrated Deepgram route is the first live path to verify, while uploads use Deepgram directly. Both normalize into the same transcript contract. Read the shared [vocabulary catalog and usage guide](transcription-vocabulary.md) when constructing provider requests; choose a relevant bounded subset and confirm live hint forwarding instead of hardcoding separate lists. A bounded OpenAI Responses API extraction step produces schema-constrained JSON; deterministic server code validates it and calls Linear. A model does not receive arbitrary tool authority.
 
 Inngest runs durable post-call steps through Next.js routes. No always-on media bot, custom WebRTC server, or separate agent runtime is required. Its retries still require duplicate-safe external writes. See [Integrations](integrations.md) for official references and prerequisites.
+
+## Callback paths to implement
+
+These paths are reserved for provider configuration; no route exists yet. Register exact origins/paths, and update this contract and provider settings together if changed:
+
+- `/auth/callback`: Next.js Supabase PKCE session exchange. GitHub's OAuth callback instead points to `https://<project-ref>.supabase.co/auth/v1/callback`.
+- `/api/integrations/linear/callback`: server Linear OAuth code exchange and state verification.
+- `/api/webhooks/daily`: signed Daily handshake and event ingestion.
+- `/api/webhooks/deepgram`: upload result ingestion with persisted per-attempt authentication/correlation.
+- `/api/inngest`: SDK serve endpoint for durable functions; use the SDK's supported methods and signing verification.
+
+See [Setup](setup.md) for local and deployed registration order. Endpoints must reject invalid input/authorization; do not implement placeholder successful webhook responses.
 
 ## Suggested code layout
 

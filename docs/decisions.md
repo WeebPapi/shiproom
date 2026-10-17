@@ -16,6 +16,9 @@ Last updated: 2026-10-17. Update this file for relevant decisions and verified p
 - **D10 — publication:** create a new public `WeebPapi/shiproom` GitHub repository for this checkout and its documentation.
 - **D11 — Georgian:** transcription should preferably support Georgian alongside English. HappyScribe was suggested for evaluation, not mandated as the provider. Language support and practical developer-conversation accuracy both need verification.
 - **D12 — transcription choice and vocabulary:** use Deepgram Nova-3. Preserve the user's screenshot hints, previous suggestions, and useful additions in a reusable English/Georgian catalog for implementation. Provider choice is settled; this does not assert that Georgian quality or hint effectiveness passed verification.
+- **D13 — call provider:** use Daily alongside Deepgram, with integrated transcription billed separately from free call allowances. Start with Daily Prebuilt.
+- **D14 — Linear setup:** create a dedicated **Shiproom** workspace, not the connected ARCI projects workspace/team. Proposed destinations are **Shiproom MVP** for build work and **Shiproom Demo** for generated demo issues.
+- **D15 — account setup:** the user wants an exact manual checklist, has Supabase/Vercel accounts and an OpenAI API key, and no AI Studio account. Use the existing OpenAI API account for extraction; no Gemini signup is required.
 
 ## Initial engineering defaults
 
@@ -24,7 +27,7 @@ These are scoped implementation recommendations, chosen to make the request conc
 - **E1 — team anchor:** one Linear workspace per Shiproom team; explicit app memberships/invitations. Choose one eligible Linear team/project and one GitHub repo per call.
 - **E2 — capture:** Daily Prebuilt for call transport, integrated Deepgram Nova-3 as the first live transcription route, and direct Deepgram for uploads. Share the normalized transcript contract and [vocabulary reference](transcription-vocabulary.md). Account eligibility, live model/language/hint forwarding, and two-device capture are early gates, not assumptions of working media.
 - **E3 — backend:** one Next.js app, Supabase Auth/Postgres/private storage, Inngest durable processing. No custom media servers or general agent framework.
-- **E4 — extraction:** schema-constrained Gemini Flash JSON with local semantic checks and transcript/source evidence. One model/provider initially, with a real extraction smoke test before freezing the scaffold model ID.
+- **E4 — extraction:** OpenAI Responses API strict JSON Schema with local semantic checks and transcript/source evidence. Initial model `gpt-5-mini`, pending account-access and extraction checks. One model/provider initially.
 - **E5 — GitHub:** separate identity login from selected-repo read access; prefer a read-only GitHub App. Public-repo-only context is an explicit fallback, not completion of private repo onboarding.
 - **E6 — reliability:** freeze one task batch, preallocate UUID v4 issue IDs, reconcile external timeouts by that ID, persist participant notifications. Context ambiguity blocks writes. No automatic re-publication after a completed batch.
 - **E7 — demo bounds:** four authenticated users, desktop Chrome/Edge, English and preferably Georgian speech with explicit language selection; uploads up to 25 MB/15 minutes, up to ten grounded tasks, bounded context reads. Georgian has an early quality gate; broader languages and unrestricted code-switching need later verification.
@@ -34,6 +37,7 @@ These are scoped implementation recommendations, chosen to make the request conc
 ## Implementation ledger
 
 - Documentation foundation: written and validated; published in the public [WeebPapi/shiproom repository](https://github.com/WeebPapi/shiproom) on `master`.
+- Setup preparation: [manual checklist and skeleton handoff](setup.md), `.env.example`, and secret/build ignore rules written. Vercel `weebpapis-projects/shiproom` created, linked locally, and verified as Next.js / Node 24.x. No Git auto-deployment connection or app deployment yet. Other provider setup requires the manual steps; ARCI has not been modified.
 - App scaffold / local commands: not started.
 - Auth, team membership, invitations: not started.
 - Linear OAuth/context and GitHub repository connection: not started.
@@ -48,11 +52,14 @@ Mark an item implemented when code exists; mark it verified only with a check re
 
 ## Prerequisites still open
 
-Assign the four developer lane owners and H0 start time. Provision provider accounts/credentials privately, verify Daily paid transcription/webhook access, choose a real demo Linear team/project and allowlisted GitHub repository, confirm the model/account/data-use configuration, and establish the deployment URL. None of these block publication of the base specification; they block claims of a working app.
+Assign the four developer lane owners and H0 start time. Follow [Setup](setup.md) to create the dedicated Linear workspace/projects, configure provider accounts/credentials privately, verify Daily paid transcription/webhook access, authorize an allowlisted GitHub repository, confirm OpenAI model access, and establish the deployment URL. These block claims of a working app; they do not block starting the skeleton.
 
 If billing or setup blocks a provider, use the relevant documented fallback and record the change. Unfinished self-service onboarding must be disclosed if the demo relies on a preconfigured team. Do not cut authorization, evidence, or duplicate safety to claim the full scope is complete.
 
 ## Change and verification log
+
+- **2026-10-17 — setup preparation:** verified GitHub and Vercel CLI identity; created and locally linked Vercel project `shiproom` under `weebpapis-projects`, then configured and inspected Next.js / Node 24.x. Recorded dedicated Linear workspace and manual onboarding decisions, switched the active extraction recommendation to the existing OpenAI account, added configuration templates/ignores and exact callback contracts. Current Linear connector sees only ARCI; no workspace was changed. No app, provider integration, billing signup, or model request was executed.
+- **2026-10-17 — setup checks:** validated 11 Markdown files, 66 local links, balanced code fences, Unicode text, vocabulary JSON, unique environment-template keys, and generated secret lengths without printing values. Verified `.env.local` and `.vercel/project.json` are ignored while `.env.example` is eligible for tracking. Application checks remain inapplicable before scaffolding.
 
 - **2026-10-17 — documentation baseline:** captured user clarifications, two planning demo paths, agent doc-maintenance rules, architecture contracts, provider comparison/REA assessment, and four-developer delivery gates. Application functionality is still unimplemented. Provider documentation was reviewed; no provider integration was exercised.
 - **2026-10-17 — documentation checks:** nine Markdown files and 35 local links checked; JSON example parsed and code fences balanced. Reviewed scope consistency against calendar + `.ics`, in-app-only delivery, automatic issue creation, and live/upload parity. Application tests are not applicable before scaffolding.

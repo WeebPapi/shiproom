@@ -23,7 +23,7 @@ A and C agree provider helpers and credential boundaries; B and C agree transcri
 
 ### H0-H2: remove prerequisites and freeze contracts
 
-- Assign lane owners and a deployment owner; confirm credentials for Supabase, Daily, Deepgram, Linear, GitHub, Gemini, and Inngest privately.
+- Assign lane owners and a deployment owner; follow [Setup](setup.md) and confirm credentials for Supabase, Daily, Deepgram, Linear, GitHub, OpenAI, and Inngest privately.
 - Confirm Daily paid transcription/webhook access in hour 1. If unavailable, declare upload the guaranteed capture path immediately.
 - B checks a short Georgian sample in the selected Deepgram Nova-3 model, using the [shared vocabulary reference](transcription-vocabulary.md); obtain native-speaker review. Check Daily model/language/keyterm forwarding separately. Record quality, latency, account access, and selected hints before polishing capture. Provider choice is settled; language-list support alone does not pass the quality gate.
 - A scaffolds once, commits the lockfile, records actual commands/environment variables, and creates shared schemas from [Architecture](architecture.md).

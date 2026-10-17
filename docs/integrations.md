@@ -1,10 +1,10 @@
 # Integrations and provider choices
 
-Checked against official documentation on 2026-10-17. Prices, model IDs, limits, and eligibility can change; confirm in the actual accounts before implementation. Deepgram is the user's selected transcription provider; other implementation defaults remain engineering recommendations. No accounts or integrations are provisioned by this document.
+Checked against official documentation on 2026-10-17. Prices, model IDs, limits, and eligibility can change; confirm in the actual accounts before implementation. The user selected Deepgram, Daily, a dedicated Linear workspace, and their existing OpenAI API account. [Setup](setup.md) owns account steps and actual provisioning status; these API contracts are not evidence of working integrations.
 
 ## Recommendation
 
-Use **Deepgram Nova-3 for transcription of live calls and uploaded audio**. Daily Prebuilt remains the recommended call transport; verify its built-in Deepgram route first. Direct Deepgram streaming is a fallback integration approach if needed settings cannot be forwarded, not a replacement for multiplayer call transport. Both paths use the same transcript contract and vocabulary catalog. Spend hackathon time on context, useful tickets, and a clear result UI. A custom Daily React call surface is a polish step after the core passes.
+Use **Deepgram Nova-3 for transcription of live calls and uploaded audio**. Daily is the selected call provider; start with Prebuilt and verify its built-in Deepgram route first. Direct Deepgram streaming is a fallback integration approach if needed settings cannot be forwarded, not a replacement for multiplayer call transport. Both paths use the same transcript contract and vocabulary catalog. Spend hackathon time on context, useful tickets, and a clear result UI. A custom Daily React call surface is a polish step after the core passes.
 
 The reusable English/Georgian [hint catalog](transcription-vocabulary.json) includes the user's screenshot terms, earlier suggestions, and additional candidates. [Vocabulary guidance](transcription-vocabulary.md) owns selection, spelling variants, provider limits, and evaluation; read it before implementing transcription requests. Provider selection is settled; account access, live routing, and Georgian accuracy still need verification.
 
@@ -71,15 +71,15 @@ Linear's existing GitHub integration may provide useful links; do not assume it 
 
 ## Structured extraction, persistence, and execution
 
-Engineering default: **Gemini Flash via the official Google GenAI TypeScript SDK**, with JSON Schema output and local validation. Current researched model ID is `gemini-3.8-flash`; verify availability with one extraction before pinning it in the scaffold. This chooses an economical schema-capable model, not a claim that it has been benchmarked best for this task. Keep one model ID in server configuration; do not build a model picker. [Structured output](https://ai.google.dev/gemini-api/docs/structured-output).
+Use the user's existing **OpenAI API account**, with the official `openai` TypeScript SDK and Responses API Structured Outputs (`text.format`, strict JSON Schema). Start with `OPENAI_MODEL=gpt-5-mini`; verify access and one real extraction before pinning the scaffold model. Handle refusals, incomplete responses, and schema/semantic validation failures without creating issues. Keep one server-side model setting; do not build a model picker. [Structured Outputs](https://developers.openai.com/api/docs/guides/structured-outputs?api-mode=responses), [GPT-5 mini](https://developers.openai.com/api/docs/models/gpt-5-mini).
 
-Use synthetic/public content for any free-tier experiment. Google's pricing distinguishes free-tier content use for product improvement from paid-tier handling; use a suitable paid configuration for private team transcripts/code. Extraction quality still needs the fixtures in [Delivery](delivery.md). [Pricing/data-use distinctions](https://ai.google.dev/gemini-api/docs/pricing).
+No Google AI Studio/Gemini signup is required. Set a suitable project budget/usage alert and keep the API key server-side. Use synthetic/public fixtures for initial checks; extraction quality and Georgian meaning still need the gates in [Delivery](delivery.md). Provider/model selection is not a quality benchmark.
 
 Supabase owns sessions, relational state, and private uploads. Direct-to-storage uploads avoid application request-body limits. Enforce file limits and use a supported resumable/signed upload mechanism when appropriate. [Storage upload guide](https://supabase.com/docs/guides/storage/uploads/standard-uploads).
 
 Use Inngest's Next.js integration for durable post-call processing. Keep secret-bearing job payloads/logs minimal: pass meeting/request IDs, load credentials server-side, and return record IDs from steps rather than full transcripts. Its retry semantics do not guarantee exactly-once external effects; use persisted IDs and reconciliation. [Next.js guide](https://www.inngest.com/docs/getting-started/nextjs-quick-start), [step execution and side effects](https://www.inngest.com/docs/durable-execution/primitives/step-run).
 
-Default web deployment: Next.js on Vercel, Supabase hosted project, Inngest Cloud, and Daily hosted media. Verify the actual hosting duration/body limits and configure job step timeouts accordingly before demo deployment. No paid subscriptions or provider accounts have been created by writing these docs.
+Default web deployment: Next.js on Vercel, Supabase hosted project, Inngest Cloud, and Daily hosted media. Verify the actual hosting duration/body limits and configure job step timeouts accordingly before demo deployment. A Vercel project is prepared; provider billing and remaining account setup are manual steps in [Setup](setup.md). No app has been deployed.
 
 ## Calendar and delivery
 

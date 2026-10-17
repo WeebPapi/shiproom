@@ -2,17 +2,17 @@
 
 ## Current repository
 
-This is a docs-only repository. There is no `package.json`, application scaffold, database migration, environment template, test suite, CI pipeline, or deployed web app. `npm install`, `npm run dev`, and application checks are therefore not valid instructions yet.
+This repository contains documentation and setup files, including `.env.example` and `.gitignore`. There is no `package.json`, application scaffold, database migration, test suite, CI pipeline, or deployed web app. `npm install`, `npm run dev`, and application checks are therefore not valid instructions yet. Follow [provider setup](setup.md) for the account checklist and prepared Vercel project.
 
 Read [AGENTS.md](../AGENTS.md) before editing. The authoritative scope is [Product](product.md); implementation boundaries are in [Architecture](architecture.md). The local project path is not a portable setup requirement.
 
 ## First scaffold handoff
 
-The identity lane creates one Next.js App Router TypeScript scaffold, using a currently supported Node.js LTS compatible with the chosen dependencies. Use npm initially and commit its lockfile; if the team chooses another package manager, update this document and the decision log at the same time. Pin the actual Node version in the repository and record it here.
+The identity lane creates one Next.js App Router TypeScript scaffold. The prepared Vercel project uses Node.js 24.x; align local development and pin the actual supported Node version in the scaffold. Setup found local Node.js 22.13.1; no global runtime was changed. Use npm initially and commit its lockfile; if the team chooses another package manager, update this document and the decision log at the same time.
 
 Add Tailwind and an accessible component set only as needed. Use provider components for media before recreating them. Keep provider secrets and database administration in server-only modules. Do not add multiple auth systems or ORMs for hypothetical future needs; Supabase's client and SQL migrations suffice for this initial design.
 
-The scaffold change must replace this section with **tested, exact instructions** for installing dependencies, starting the app and local Inngest server, applying schema/RLS migrations, callback/webhook URLs, and running build/typecheck/lint/focused tests. Add a placeholder-only `.env.example` and appropriate `.gitignore` before storing local credentials. Document working script names from `package.json`; do not merely retain aspirational commands.
+The scaffold change must replace this section with **tested, exact instructions** for installing dependencies, starting the app and local Inngest server, applying schema/RLS migrations, callback/webhook URLs, and running build/typecheck/lint/focused tests. Maintain the existing placeholder-only `.env.example` and `.gitignore`; preserve any ignored `.env.local`. Implement the callback paths in [Architecture](architecture.md). Document working script names from `package.json`; do not merely retain aspirational commands.
 
 ## Configuration inventory to implement
 
@@ -21,18 +21,18 @@ Names below are proposed, not consumed by current code. The scaffold owner must 
 - `NEXT_PUBLIC_APP_URL`: canonical app origin and callback/link base; use an explicit local origin for development.
 - `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`: browser Supabase project connection. RLS protects access; the public key is not a team authorization mechanism.
 - `SUPABASE_SERVICE_ROLE_KEY`: privileged server access only. Configure the GitHub login OAuth app/client credentials through the Supabase dashboard, with its required auth callback.
-- `CREDENTIAL_ENCRYPTION_KEY`: random secret used by the selected authenticated encryption mechanism for stored provider tokens; document format and rotation when implemented.
+- `CREDENTIAL_ENCRYPTION_KEY`: base64-encoded 32 random bytes for authenticated encryption of stored provider tokens; document the encryption envelope and rotation when implemented.
 - `LINEAR_CLIENT_ID`, `LINEAR_CLIENT_SECRET`: OAuth app credentials; registered callback must match the implemented server route exactly. Per-team access/refresh tokens belong in encrypted connection storage, not public env variables.
 - `GITHUB_APP_ID`, `GITHUB_APP_PRIVATE_KEY`: selected-repository installation access for private context. Store installation/team mappings in the database. Public-only context fallback must be visible in status; do not request broad write scopes to save setup time.
 - `DAILY_API_KEY`, `DAILY_WEBHOOK_SECRET`: server room/transcript operations and base64 webhook HMAC secret. The browser receives only short-lived room tokens.
 - `DEEPGRAM_API_KEY`: server upload transcription; document callback authentication/correlation secrets if that mode is used.
 - Vocabulary is checked-in UTF-8 data in [transcription-vocabulary.json](transcription-vocabulary.json), with [usage guidance](transcription-vocabulary.md). The future integration should load a relevant subset and add authorized meeting context; do not introduce a second hand-maintained hint list.
-- `GEMINI_API_KEY`, `GEMINI_MODEL`: server extraction; initial researched model is in [Integrations](integrations.md). Confirm account access and structured output in a real smoke test before pinning.
+- `OPENAI_API_KEY`, `OPENAI_MODEL`: server extraction through the Responses API; initial model is `gpt-5-mini`, pending account-access and structured-output smoke tests. See [Integrations](integrations.md).
 - `INNGEST_EVENT_KEY`, `INNGEST_SIGNING_KEY`: durable workflow transport and verification; local SDK/dev-server configuration must match the selected version. Record deployment synchronization instructions.
 
 Verify the intended hosting plan's request durations, upload limits, scheduled jobs, and billing allowances. Register HTTPS OAuth/webhook endpoints for deployment and a supported local tunnel if needed. Never paste tokens into docs, tickets, example URLs, fixtures, terminal recordings, or screenshots. Product setup UI should ask for authorization through OAuth rather than displaying environment variable names to end users.
 
-No application provider accounts, subscriptions, secrets, OAuth apps, or database projects are provisioned by this documentation task.
+The Vercel project is created and linked locally. Other provider resources, credentials, and billing configuration need the user's manual checklist; [Setup](setup.md) records the precise boundary. No application integration has been exercised.
 
 ## Contribution workflow
 

@@ -15,6 +15,7 @@ This is a four-developer, 24-hour hackathon. Complete the planning-to-Linear loo
 - Providers, credentials, permissions, pricing assumptions: `docs/integrations.md`.
 - Reusable Deepgram hints: `docs/transcription-vocabulary.json`; usage, provenance, and limits: `docs/transcription-vocabulary.md`. Keep this catalog as the vocabulary source of truth.
 - Local setup and working commands: `docs/development.md`.
+- Provider onboarding, resource status, callback URLs, and skeleton handoff: `docs/setup.md`.
 - Work gates and verification: `docs/delivery.md`.
 - Decisions, deviations, implementation evidence: `docs/decisions.md`.
 - Entry-point overview and current run instructions: `README.md`.
