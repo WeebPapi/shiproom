@@ -11,6 +11,11 @@ export const serverConfig = {
     const clientSecret = read("LINEAR_CLIENT_SECRET");
     return clientId && clientSecret ? { clientId, clientSecret } : null;
   },
+  dailyApiKey: () => read("DAILY_API_KEY"),
+  linearApiKey: () => read("LINEAR_API_KEY"),
+  anthropicApiKey: () => read("ANTHROPIC_API_KEY"),
+  anthropicWorkspaceId: () => read("ANTHROPIC_WORKSPACE_ID"),
+  anthropicModel: () => read("ANTHROPIC_MODEL") || "claude-sonnet-4-5",
 };
 
 export type IntegrationStatus = "configured" | "not_configured";
@@ -22,9 +27,11 @@ export function integrationReadiness() {
     serverDatabase: has("SUPABASE_SERVICE_ROLE_KEY"),
     linearOAuth: has("LINEAR_CLIENT_ID", "LINEAR_CLIENT_SECRET", "CREDENTIAL_ENCRYPTION_KEY", "SUPABASE_SERVICE_ROLE_KEY"),
     githubApp: has("GITHUB_APP_ID", "GITHUB_APP_PRIVATE_KEY"),
-    daily: has("DAILY_API_KEY", "DAILY_WEBHOOK_SECRET"),
+    daily: has("DAILY_API_KEY"),
     deepgram: has("DEEPGRAM_API_KEY"),
     openai: has("OPENAI_API_KEY"),
+    linearPersonal: has("LINEAR_API_KEY"),
+    anthropic: has("ANTHROPIC_API_KEY"),
     inngest: has("INNGEST_EVENT_KEY", "INNGEST_SIGNING_KEY"),
   };
 }

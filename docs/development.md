@@ -44,7 +44,7 @@ Run it once per project; it is not idempotent. Afterward, confirm with a signed-
 
 ## Configuration inventory to implement
 
-The app currently reads `NEXT_PUBLIC_APP_URL`, `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` (`src/lib/env.ts`), and `SUPABASE_SERVICE_ROLE_KEY`, `CREDENTIAL_ENCRYPTION_KEY`, `LINEAR_CLIENT_ID`, `LINEAR_CLIENT_SECRET` (`src/lib/server/config.ts`). Other names are only checked for presence on the Connections page until their lane consumes them. Public-prefixed values are deliberately public; every other value must remain server-side.
+The app reads `NEXT_PUBLIC_APP_URL`, `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` (`src/lib/env.ts`), and `SUPABASE_SERVICE_ROLE_KEY`, `CREDENTIAL_ENCRYPTION_KEY`, `LINEAR_CLIENT_ID`, `LINEAR_CLIENT_SECRET`, `DAILY_API_KEY`, `LINEAR_API_KEY`, `ANTHROPIC_API_KEY`, optional `ANTHROPIC_WORKSPACE_ID`, and optional `ANTHROPIC_MODEL` (`src/lib/server/config.ts`). Other names are only checked for presence on the Connections page until their lane consumes them. Public-prefixed values are deliberately public; every other value must remain server-side.
 
 - `NEXT_PUBLIC_APP_URL`: canonical app origin and callback/link base; use an explicit local origin for development.
 - `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`: browser Supabase project connection. RLS protects access; the public key is not a team authorization mechanism.
@@ -61,7 +61,7 @@ The app currently reads `NEXT_PUBLIC_APP_URL`, `NEXT_PUBLIC_SUPABASE_URL`, `NEXT
 
 Verify the intended hosting plan's request durations, upload limits, scheduled jobs, and billing allowances. Register HTTPS OAuth/webhook endpoints for deployment and a supported local tunnel if needed. Never paste tokens into docs, tickets, example URLs, fixtures, terminal recordings, or screenshots. Product setup UI should ask for authorization through OAuth rather than displaying environment variable names to end users.
 
-Provider status is in [Setup](setup.md#agent-visible-status). No application integration has been exercised end to end.
+Provider status is in [Setup](setup.md#agent-visible-status). Daily room creation was smoke-tested without printing the key (private room, meeting token, delete). A live transcript, Claude extraction, and Linear issue creation have not been verified end to end.
 
 ## Contribution workflow
 

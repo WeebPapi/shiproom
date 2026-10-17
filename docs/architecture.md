@@ -1,6 +1,6 @@
 # Architecture and shared contracts
 
-Status: implementation contract. The identity-lane skeleton implements the schema (checked in, not yet applied to a hosted project), auth and Linear callbacks, and shared contracts in `src/lib/contracts.ts`; media, workflow, and publication pieces described here do not exist yet. [Product](product.md) owns behavior; this file owns the technical boundaries. Change shared contracts here and in code together.
+Status: implementation contract. Identity, membership, and shared contracts are in place. A hackathon slice adds email sign-in, a Daily call, Claude extraction, and Linear personal-key publication; GitHub login is postponed. Inngest, webhooks, upload transcription, and the full context workflow described here are not built. [Product](product.md) owns behavior; this file owns the technical boundaries. Change shared contracts here and in code together.
 
 ## System boundaries
 
@@ -36,7 +36,7 @@ Binding for the first scaffold and later lanes. Provisioning facts live in [Setu
 - **Uniqueness is not write-safety.** A database unique constraint does not make Linear issue creation idempotent. Persist UUID v4 issue IDs before the external write; reconcile on retry. See [External-write safety](#external-write-safety).
 - **Service role bypasses RLS.** Every team, meeting, context, upload, and notification operation still needs an explicit server-side authorization check. Browser code never receives provider API keys or `service_role`.
 - **Do not deploy docs-only.** Use the existing Vercel project after the scaffold is buildable. Do not create a second Vercel or Supabase project. Region is already Tokyo; do not recreate the project to chase Frankfurt.
-- **Live/upload/extraction/Inngest are later lanes.** The skeleton owns identity, membership, shared contracts, and honest pending states. Media, transcription, extraction, and issue publication are out of skeleton scope.
+- **Live/upload/extraction/Inngest are later lanes, except this hackathon slice.** Email magic-link sign-in, a private Daily room with a short-lived token, Claude extraction, and Linear personal-key issue creation are implemented for English. GitHub login is postponed. Issues are created only when a visible Linear team or project name contains "Shiproom". A missing stored Daily transcript can fall back to Daily live captions or this browser's microphone, and that source is labeled. Provider rows still require `service_role`. No GitHub App, Meet bot, webhook, or Inngest job is part of this slice.
 
 ## Code layout
 
@@ -105,7 +105,7 @@ Freeze resolved context and transcript revision when publication begins. A later
 }
 ```
 
-`source` is `daily` or `upload`. IDs and example speech above are illustrative. Segment times are finite, nonnegative milliseconds with `endMs >= startMs`; segment IDs are stable within a revision. Unknown speakers stay unknown; diarization labels do not prove user identity. Only finalized text enters extraction. Validate content size, duration, nonempty speech, and completeness before proceeding. Zero speech is a visible no-action result. Known capture gaps block automatic publication and offer a replacement upload rather than implying a complete record.
+`source` is `daily`, `upload`, or `browser`. `browser` is only the labeled local-microphone fallback when Daily produces no transcript; it is not an upload and it does not include other participants unless this microphone heard them. IDs and example speech above are illustrative. Segment times are finite, nonnegative milliseconds with `endMs >= startMs`; segment IDs are stable within a revision. Unknown speakers stay unknown; diarization labels do not prove user identity. Only finalized text enters extraction. Validate content size, duration, nonempty speech, and completeness before proceeding. Zero speech is a visible no-action result. Known capture gaps block automatic publication and offer a replacement upload rather than implying a complete record.
 
 The example's `en` is not a fixed language: persist the actual selected/recognized language and retain Georgian text as UTF-8. Configure the provider explicitly for Georgian (`ka` for Deepgram Nova-3); do not silently use its English default or assume multilingual auto-detection includes Georgian. Preserve the original transcript/evidence even if an issue description is translated. Georgian-English developer speech needs its own sample check. Provider language rejection is a visible recoverable failure, not a reason to relabel English output as Georgian.
 

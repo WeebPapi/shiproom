@@ -127,7 +127,8 @@ export const transcriptSchema = z
   .object({
     meetingId: uuid,
     revision: z.number().int().min(1),
-    source: z.enum(["daily", "upload"]),
+    // `browser` is this slice's local-microphone fallback when Daily transcription produces nothing.
+    source: z.enum(["daily", "upload", "browser"]),
     complete: z.boolean(),
     language: languageSchema,
     segments: z.array(transcriptSegmentSchema).max(20_000),
@@ -184,3 +185,22 @@ export function validateExtractionAgainstTranscript(result: ExtractionResult, tr
 }
 
 export const SHIPROOM_TITLE_PREFIX = "[shiproom] ";
+
+const cueSchema = z
+  .object({
+    speakerLabel: z.string().trim().max(80).nullable(),
+    text: z.string().trim().min(1).max(2_000),
+    startMs: z.number().int().nonnegative().max(86_400_000),
+    endMs: z.number().int().nonnegative().max(86_400_000),
+  })
+  .refine((cue) => cue.endMs >= cue.startMs, { message: "endMs must be >= startMs", path: ["endMs"] });
+
+/** Browser-captured lines sent when Daily storage does not return a transcript. */
+export const liveCaptureSchema = z.object({
+  teamId: uuid,
+  meetingId: uuid,
+  origin: z.enum(["daily-live", "browser"]),
+  consented: z.literal(true),
+  segments: z.array(cueSchema).max(500),
+});
+export type LiveCapture = z.infer<typeof liveCaptureSchema>;

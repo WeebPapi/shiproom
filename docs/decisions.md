@@ -42,14 +42,14 @@ These are scoped implementation recommendations, chosen to make the request conc
 - Documentation foundation: written and validated; published in the public [WeebPapi/shiproom repository](https://github.com/WeebPapi/shiproom) on `master`.
 - Setup preparation: [manual checklist and skeleton handoff](setup.md), `.env.example`, and secret/build ignore rules written. Vercel `weebpapis-projects/shiproom` created, linked locally, and verified as Next.js / Node 24.x. No Git auto-deployment connection or app deployment yet. Supabase `shiproom-dev` (`fnrdatkgwdtsqmvstrlp`, Tokyo), GitHub login OAuth, and private `shiproom-audio` bucket settings are configured; Linear/Daily/Deepgram/Inngest/OpenAI keys and the app scaffold are not. ARCI has not been modified.
 - App scaffold / local commands: **implemented** (Next.js 16.4, npm, Node 24 pinned); build, typecheck, lint and tests pass locally. Not deployed.
-- Database schema/RLS/storage policies: **implemented** as checked-in migration `supabase/migrations/20261017130000_initial_schema.sql`; RLS verified in PGlite only. **Not applied** to any hosted Supabase project.
-- Auth, team membership, invitations: **implemented**, not verified live (needs applied schema and an enabled GitHub provider on the project in `.env.local`).
+- Database schema/RLS/storage policies: **implemented**. Initial migration applied to personal project `bovjaxluyejvmgulvypz`; RLS verified in PGlite. `20261017191500_browser_transcript_source.sql` adds the labeled `browser` transcript source.
+- Auth, team membership, invitations: **implemented**. Email magic-link sign-in is the hackathon path; GitHub sign-in is postponed. Not verified live.
 - Linear OAuth/context and GitHub repository connection: **implemented** (Linear OAuth with encrypted token storage; public-repo allowlist). Not verified: no Linear OAuth app or `service_role` key yet.
 - Calendar/huddles/context UI: **partially implemented**: shell, home list of upcoming/recent meetings, shared context dialog (schedule/huddle), meeting placeholder, inbox, members, connections. Calendar grid view and `.ics` not built.
-- Live calls and durable transcription: not started.
+- Live calls and durable transcription: **partial** — English Daily room, short-lived token, and stored-transcript fetch exist. A live transcript has not been verified. Browser speech recognition is the labeled fallback when Daily produces nothing.
 - Upload fallback and normalization: not started.
-- Inference/extraction and durable workflow: not started.
-- Retry-safe issue creation and in-app inbox: not started.
+- Inference/extraction and durable workflow: **partial** — Claude extraction runs in the end-call request. Inngest is not wired. OpenAI remains the documented team default.
+- Retry-safe issue creation and in-app inbox: **partial** — Linear personal key creates `[shiproom]` issues only when a team or project name contains "Shiproom", reusing a persisted UUID when the service role can write. Not verified against a Shiproom workspace.
 - Deployment, automated checks, and live acceptance verification: not started.
 
 Mark an item implemented when code exists; mark it verified only with a check result. A mock, fixture, or documented API is not evidence of a live integration.
@@ -72,6 +72,7 @@ If billing or setup blocks a provider, use the relevant documented fallback and 
 
 ## Change and verification log
 
+- **2026-10-17 — hackathon path:** GitHub login postponed; this slice is Daily call → Claude → Linear personal key.
 - **2026-10-17 — Linear personal API key for this developer:** this developer will use a Linear personal API key for the hackathon demo (server-only, ignored `.env.local`), not the OAuth app. Do not use ARCI. Destination workspace is still Shiproom / Shiproom Demo when that workspace exists.
 - **2026-10-17 — Claude extraction for this developer:** user chose Anthropic Claude as the extraction provider for this hackathon path, with the API key stored only in ignored `.env.local`. OpenAI `gpt-5-mini` stays the documented team default until the team agrees (D17). No extraction call was run.
 - **2026-10-17 — personal developer Supabase project:** created free project `shiproom-dev` (`bovjaxluyejvmgulvypz`, `eu-central-1`) in one developer's personal organization; applied `supabase/migrations/20261017130000_initial_schema.sql` unchanged via Supabase MCP `apply_migration`. Database object counts match the file (15 tables, 24 policies, 12 functions, 6 triggers, 6 enums). Created private bucket `shiproom-audio` (26214400 bytes, 10 audio MIME types). Security advisor: only the expected INFO/WARN findings listed in the migration-trial entry below. GitHub sign-in, Auth URLs and `service_role` are not configured yet, so no end-to-end login has run. Not shared with `fnrdatkgwdtsqmvstrlp`.

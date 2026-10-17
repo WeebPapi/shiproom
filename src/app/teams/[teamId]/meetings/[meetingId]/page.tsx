@@ -2,11 +2,13 @@ import { notFound } from "next/navigation";
 import { z } from "zod";
 import { cardClass } from "@/components/styles";
 import { requireMembership } from "@/lib/server/auth";
+import { serverConfig } from "@/lib/server/config";
 import { getLinearOptions, listTeamRepositories } from "@/lib/server/connections";
 import { STATUS_LABEL } from "@/lib/server/meetings";
 import { createClient } from "@/lib/supabase/server";
 import { formatInZone } from "@/lib/time";
 import type { CaptureStatus, ProcessingStatus } from "@/lib/contracts";
+import { CallPanel } from "./call-panel";
 
 type MeetingRow = {
   id: string;
@@ -23,6 +25,9 @@ type MeetingRow = {
   linear_project_id: string | null;
   capture_status: CaptureStatus;
   processing_status: ProcessingStatus;
+  summary: string | null;
+  decisions: string[];
+  open_questions: string[];
   error_message: string | null;
   organizer_id: string;
 };
@@ -31,14 +36,14 @@ type TaskRow = { id: string; ordinal: number; payload: { title?: string }; publi
 
 export default async function MeetingPage({ params }: { params: Promise<{ teamId: string; meetingId: string }> }) {
   const { teamId, meetingId } = await params;
-  await requireMembership(teamId);
+  const { user } = await requireMembership(teamId);
   if (!z.uuid().safeParse(meetingId).success) notFound();
 
   const supabase = await createClient();
   const { data: meeting } = await supabase
     .from("meetings")
     .select(
-      "id, kind, title, agenda, language, scheduled_start, scheduled_end, timezone, context_mode, github_repository_id, linear_team_id, linear_project_id, capture_status, processing_status, error_message, organizer_id",
+      "id, kind, title, agenda, language, scheduled_start, scheduled_end, timezone, context_mode, github_repository_id, linear_team_id, linear_project_id, capture_status, processing_status, summary, decisions, open_questions, error_message, organizer_id",
     )
     .eq("id", meetingId)
     .eq("team_id", teamId)
@@ -101,9 +106,17 @@ export default async function MeetingPage({ params }: { params: Promise<{ teamId
         <h2 id="call-heading" className="font-medium">
           Call
         </h2>
-        <p className="text-muted">
-          Live calling isn&apos;t available in this build yet. Capture status: <strong className="text-foreground">{STATUS_LABEL[meeting.capture_status]}</strong>.
-        </p>
+        {meeting.kind === "upload" ? (
+          <p className="text-muted">This meeting is an upload. Live calling is not used for it.</p>
+        ) : (
+          <CallPanel
+            teamId={teamId}
+            meetingId={meeting.id}
+            isOrganizer={meeting.organizer_id === user.id}
+            dailyReady={Boolean(serverConfig.dailyApiKey())}
+            georgianMeeting={meeting.language === "ka"}
+          />
+        )}
       </section>
 
       <section className={`${cardClass} space-y-3 p-4`} aria-labelledby="result-heading">
@@ -112,7 +125,22 @@ export default async function MeetingPage({ params }: { params: Promise<{ teamId
         </h2>
         <p className="text-muted">
           Processing: <strong className="text-foreground">{STATUS_LABEL[meeting.processing_status]}</strong>
+          {" · "}
+          Capture: <strong className="text-foreground">{STATUS_LABEL[meeting.capture_status]}</strong>
         </p>
+        {meeting.summary && <p>{meeting.summary}</p>}
+        {meeting.decisions.length > 0 && (
+          <div>
+            <h3 className="font-medium">Decisions</h3>
+            <ul className="list-disc pl-5">{meeting.decisions.map((item) => <li key={item}>{item}</li>)}</ul>
+          </div>
+        )}
+        {meeting.open_questions.length > 0 && (
+          <div>
+            <h3 className="font-medium">Open questions</h3>
+            <ul className="list-disc pl-5">{meeting.open_questions.map((item) => <li key={item}>{item}</li>)}</ul>
+          </div>
+        )}
         {meeting.error_message && (
           <p role="alert" className="text-danger">
             {meeting.error_message}

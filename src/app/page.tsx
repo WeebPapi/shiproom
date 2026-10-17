@@ -35,12 +35,11 @@ export default async function HomePage() {
         </h2>
         <p className="text-muted">
           Ask a team owner for an invitation link sent to{" "}
-          {user.email ? <strong className="text-foreground">{user.email}</strong> : "your verified GitHub email"}.
+          {user.email ? <strong className="text-foreground">{user.email}</strong> : "your verified email"}.
         </p>
         {!user.emailVerified && (
           <p className="text-warning">
-            GitHub didn&apos;t share a verified email for your account, so invitations can&apos;t be matched to you. Verify an email on GitHub,
-            then sign out and sign in again.
+            This account has no verified email, so invitations can&apos;t be matched to you. Open the sign-in link from your email, then try again.
           </p>
         )}
       </section>

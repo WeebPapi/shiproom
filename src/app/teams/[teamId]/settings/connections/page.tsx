@@ -76,7 +76,13 @@ export default async function ConnectionsPage({
           )}
         </p>
         {readiness.linearOAuth === "not_configured" ? (
-          <p className="text-warning">Linear isn&apos;t set up on this server yet.</p>
+          readiness.linearPersonal === "configured" ? (
+            <p className="text-muted">
+              OAuth isn&apos;t configured. This hackathon path creates issues with the server&apos;s Linear personal key, and only when a team or project name contains Shiproom.
+            </p>
+          ) : (
+            <p className="text-warning">Linear isn&apos;t set up on this server yet.</p>
+          )
         ) : isOwner ? (
           <div className="flex gap-2">
             <form action={startLinearConnection}>
@@ -142,6 +148,8 @@ export default async function ConnectionsPage({
                 ["Private GitHub App", readiness.githubApp],
                 ["Live calls (Daily)", readiness.daily],
                 ["Upload transcription (Deepgram)", readiness.deepgram],
+                ["Linear personal key", readiness.linearPersonal],
+                ["Task extraction (Claude)", readiness.anthropic],
                 ["Task extraction (OpenAI)", readiness.openai],
                 ["Background processing (Inngest)", readiness.inngest],
               ] as const

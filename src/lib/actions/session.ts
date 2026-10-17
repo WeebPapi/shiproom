@@ -27,7 +27,7 @@ export async function createTeam(_prev: ActionState, formData: FormData): Promis
 }
 
 const INVITATION_ERRORS: Record<string, string> = {
-  verified_email_required: "Your GitHub account has no verified email Shiproom can read. Verify an email on GitHub, sign out, and sign in again.",
+  verified_email_required: "Your account has no verified email Shiproom can read. Open the sign-in link from your email, then try again.",
   invitation_email_mismatch: "This invitation was sent to a different email address than the one on your GitHub account.",
   invalid_invitation: "This invitation is invalid, expired, or was revoked. Ask a team owner for a new link.",
 };
