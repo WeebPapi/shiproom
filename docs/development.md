@@ -56,6 +56,7 @@ The app currently reads `NEXT_PUBLIC_APP_URL`, `NEXT_PUBLIC_SUPABASE_URL`, `NEXT
 - `DEEPGRAM_API_KEY`: server upload transcription; document callback authentication/correlation secrets if that mode is used.
 - Vocabulary is checked-in UTF-8 data in [transcription-vocabulary.json](transcription-vocabulary.json), with [usage guidance](transcription-vocabulary.md). The future integration should load a relevant subset and add authorized meeting context; do not introduce a second hand-maintained hint list.
 - `OPENAI_API_KEY`, `OPENAI_MODEL`: server extraction through the Responses API; initial model is `gpt-5-mini`, pending account-access and structured-output smoke tests. See [Integrations](integrations.md).
+- `ANTHROPIC_API_KEY`: server-only; this developer's extraction path uses Anthropic Claude (see [Decisions](decisions.md)).
 - `INNGEST_EVENT_KEY`, `INNGEST_SIGNING_KEY`: durable workflow transport and verification; local SDK/dev-server configuration must match the selected version. Record deployment synchronization instructions.
 
 Verify the intended hosting plan's request durations, upload limits, scheduled jobs, and billing allowances. Register HTTPS OAuth/webhook endpoints for deployment and a supported local tunnel if needed. Never paste tokens into docs, tickets, example URLs, fixtures, terminal recordings, or screenshots. Product setup UI should ask for authorization through OAuth rather than displaying environment variable names to end users.

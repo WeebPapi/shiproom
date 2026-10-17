@@ -20,6 +20,7 @@ Last updated: 2026-10-17. Update this file for relevant decisions and verified p
 - **D14 — Linear setup:** create a dedicated **Shiproom** workspace, not the connected ARCI projects workspace/team. Proposed destinations are **Shiproom MVP** for build work and **Shiproom Demo** for generated demo issues.
 - **D15 — account setup:** the user wants an exact manual checklist, has Supabase/Vercel accounts and an OpenAI API key, and no AI Studio account. Use the existing OpenAI API account for extraction; no Gemini signup is required.
 - **D16 — English-first (2026-10-17):** build and demo English first. Georgian stays a selectable language (the `en`/`ka` contract is unchanged) and a product target, but the default is `en` and Georgian quality work (AC9) is deferred until the English path works. The BTU Georgian dataset is not an ASR evaluation source or a committable resource; see [Integrations](integrations.md#georgian-and-happyscribe).
+- **D17 — extraction provider (2026-10-17):** for this developer's hackathon path, extraction uses Anthropic Claude. The API key lives only in ignored `.env.local`. This replaces the OpenAI `gpt-5-mini` default for that path. OpenAI remains the original team default until the team agrees.
 
 ## Initial engineering defaults
 
@@ -71,6 +72,7 @@ If billing or setup blocks a provider, use the relevant documented fallback and 
 
 ## Change and verification log
 
+- **2026-10-17 — Claude extraction for this developer:** user chose Anthropic Claude as the extraction provider for this hackathon path, with the API key stored only in ignored `.env.local`. OpenAI `gpt-5-mini` stays the documented team default until the team agrees (D17). No extraction call was run.
 - **2026-10-17 — personal developer Supabase project:** created free project `shiproom-dev` (`bovjaxluyejvmgulvypz`, `eu-central-1`) in one developer's personal organization; applied `supabase/migrations/20261017130000_initial_schema.sql` unchanged via Supabase MCP `apply_migration`. Database object counts match the file (15 tables, 24 policies, 12 functions, 6 triggers, 6 enums). Created private bucket `shiproom-audio` (26214400 bytes, 10 audio MIME types). Security advisor: only the expected INFO/WARN findings listed in the migration-trial entry below. GitHub sign-in, Auth URLs and `service_role` are not configured yet, so no end-to-end login has run. Not shared with `fnrdatkgwdtsqmvstrlp`.
 - **2026-10-17 — migration trial:** applied `supabase/migrations/20261017130000_initial_schema.sql` unchanged via Supabase MCP `apply_migration` to a throwaway project (success; 14 public tables) and created the private `shiproom-audio` bucket. That project has since been paused for deletion and is not used. Security advisor findings: RLS-without-policy INFO on `private.connection_secrets`, `processing_requests`, `provider_events` (intended service-role-only) and WARN that `create_team`/`accept_invitation` are callable by `authenticated` (intended; both check `auth.uid()`). No end-to-end login has run.
 
