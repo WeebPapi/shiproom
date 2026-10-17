@@ -1,7 +1,7 @@
 "use client";
 
 import { useActionState } from "react";
-import { inputClass } from "@/components/styles";
+import { inputClass, labelClass } from "@/components/styles";
 import { FieldError, FormStatus, SubmitButton } from "@/components/ui";
 import { initialActionState } from "@/lib/actions/state";
 import { createInvitation } from "@/lib/actions/team";
@@ -11,7 +11,7 @@ export function InviteForm({ teamId }: { teamId: string }) {
   return (
     <form action={action} className="space-y-2">
       <input type="hidden" name="teamId" value={teamId} />
-      <label htmlFor="invite-email" className="block font-medium">
+      <label htmlFor="invite-email" className={labelClass}>
         Email
       </label>
       <div className="flex gap-2">
@@ -20,6 +20,7 @@ export function InviteForm({ teamId }: { teamId: string }) {
           name="email"
           type="email"
           required
+          placeholder="teammate@company.com"
           className={inputClass}
           aria-invalid={Boolean(state.fieldErrors?.email)}
           aria-describedby={state.fieldErrors?.email ? "email-error" : undefined}
@@ -30,7 +31,7 @@ export function InviteForm({ teamId }: { teamId: string }) {
       <FormStatus state={state} />
       {state.inviteUrl && (
         <div>
-          <label htmlFor="invite-url" className="block text-muted">
+          <label htmlFor="invite-url" className={labelClass}>
             Invitation link
           </label>
           <input id="invite-url" readOnly value={state.inviteUrl} className={`${inputClass} font-mono text-xs`} onFocus={(e) => e.currentTarget.select()} />

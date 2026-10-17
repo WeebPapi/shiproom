@@ -10,7 +10,7 @@ export function NavLink({ href, exact = false, children }: { href: string; exact
     <Link
       href={href}
       aria-current={active ? "page" : undefined}
-      className="flex items-center justify-between rounded-md px-2 py-1.5 text-muted hover:bg-border/50 hover:text-foreground aria-[current=page]:bg-border/60 aria-[current=page]:text-foreground"
+      className="flex h-7 items-center gap-2 rounded-md px-2 text-muted transition-colors hover:bg-foreground/5 hover:text-foreground aria-[current=page]:bg-foreground/[0.07] aria-[current=page]:text-foreground [&>svg]:shrink-0"
     >
       {children}
     </Link>

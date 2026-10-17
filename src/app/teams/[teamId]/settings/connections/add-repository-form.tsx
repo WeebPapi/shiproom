@@ -1,7 +1,7 @@
 "use client";
 
 import { useActionState } from "react";
-import { inputClass } from "@/components/styles";
+import { inputClass, labelClass } from "@/components/styles";
 import { FieldError, FormStatus, SubmitButton } from "@/components/ui";
 import { initialActionState } from "@/lib/actions/state";
 import { addPublicRepository } from "@/lib/actions/team";
@@ -11,7 +11,7 @@ export function AddRepositoryForm({ teamId, suggestions }: { teamId: string; sug
   return (
     <form action={action} className="space-y-2">
       <input type="hidden" name="teamId" value={teamId} />
-      <label htmlFor="repository" className="block font-medium">
+      <label htmlFor="repository" className={labelClass}>
         Add a public repository
       </label>
       <div className="flex gap-2">

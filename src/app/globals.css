@@ -1,12 +1,14 @@
 @import "tailwindcss";
 
 :root {
-  --background: #fbfbfc;
+  color-scheme: light;
+  --background: #ffffff;
   --surface: #ffffff;
-  --sidebar: #f4f4f6;
-  --border: #e4e4e8;
-  --foreground: #1b1b1f;
-  --muted: #6b6b76;
+  --sidebar: #f5f5f6;
+  --subtle: #f0f0f2;
+  --border: #e6e6e9;
+  --foreground: #1a1a1e;
+  --muted: #6e6e78;
   --accent: #5e6ad2;
   --accent-foreground: #ffffff;
   --danger: #c4314b;
@@ -16,14 +18,16 @@
 
 @media (prefers-color-scheme: dark) {
   :root {
-    --background: #0f0f11;
-    --surface: #161619;
-    --sidebar: #121214;
-    --border: #2a2a2f;
-    --foreground: #ededf0;
-    --muted: #9a9aa5;
-    --accent: #7c85e6;
-    --accent-foreground: #0f0f11;
+    color-scheme: dark;
+    --background: #101113;
+    --surface: #16171a;
+    --sidebar: #0b0c0d;
+    --subtle: #1d1e22;
+    --border: #26272b;
+    --foreground: #e6e6e9;
+    --muted: #8b8d96;
+    --accent: #6c78e0;
+    --accent-foreground: #ffffff;
     --danger: #f06d82;
     --success: #5cc48a;
     --warning: #e3b341;
@@ -34,6 +38,7 @@
   --color-background: var(--background);
   --color-surface: var(--surface);
   --color-sidebar: var(--sidebar);
+  --color-subtle: var(--subtle);
   --color-border: var(--border);
   --color-foreground: var(--foreground);
   --color-muted: var(--muted);
@@ -47,7 +52,7 @@
 }
 
 body {
-  background: var(--background);
+  background: var(--sidebar);
   color: var(--foreground);
 }
 
@@ -56,6 +61,29 @@ body {
   outline-offset: 2px;
 }
 
+::selection {
+  background: color-mix(in srgb, var(--accent) 30%, transparent);
+}
+
 dialog::backdrop {
-  background: rgb(0 0 0 / 0.45);
+  background: rgb(0 0 0 / 0.4);
+}
+
+/* Short fade for dialogs and menus; nothing else animates. */
+dialog[open],
+[popover]:popover-open {
+  transition:
+    opacity 120ms ease-out,
+    translate 120ms ease-out;
+  @starting-style {
+    opacity: 0;
+    translate: 0 4px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  dialog[open],
+  [popover]:popover-open {
+    transition: none;
+  }
 }

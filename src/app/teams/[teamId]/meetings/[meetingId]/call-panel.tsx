@@ -117,7 +117,10 @@ export function CallPanel(props: { teamId: string; meetingId: string; isOrganize
   return (
     <div className="space-y-3">
       {props.georgianMeeting && <p className="text-muted">This meeting is marked Georgian. This path transcribes and extracts English.</p>}
-      <p role="status" className="text-muted">{status}</p>
+      <p role="status" className="flex items-center gap-2 text-xs text-muted">
+        <span aria-hidden className={`size-1.5 rounded-full ${join ? "bg-success" : "bg-muted/40"}`} />
+        {status}
+      </p>
       {error && <p role="alert" className="text-danger">{error}</p>}
       {!join && !result && (
         <form
@@ -127,7 +130,7 @@ export function CallPanel(props: { teamId: string; meetingId: string; isOrganize
             void start();
           }}
         >
-          <label className="flex items-start gap-2">
+          <label className="flex items-start gap-2 text-muted accent-accent">
             <input type="checkbox" checked={consented} onChange={(event) => setConsented(event.target.checked)} className="mt-1" />
             <span>Transcribe this call in English. Agreed tasks can become Linear issues. Microphone, camera, and screen sharing use the Daily controls.</span>
           </label>
@@ -138,7 +141,7 @@ export function CallPanel(props: { teamId: string; meetingId: string; isOrganize
       )}
       {join && (
         <>
-          <div ref={containerRef} className="relative h-[28rem] overflow-hidden rounded-md bg-black" />
+          <div ref={containerRef} className="relative aspect-video max-h-[70dvh] w-full overflow-hidden rounded-md bg-black" />
           {join.persistenceWarning && <p className="text-warning">{join.persistenceWarning}</p>}
           {props.isOrganizer ? (
             <button type="button" className={buttonClass.primary} onClick={() => void endCall()} disabled={pending}>
@@ -172,9 +175,9 @@ function CallOutcome({ result }: { result: CallFinish }) {
         </div>
       )}
       {result.tasks.length > 0 && (
-        <ul className="divide-y divide-border">
+        <ul className="divide-y divide-border rounded-md border border-border">
           {result.tasks.map((task) => (
-            <li key={`${task.title}-${task.url ?? task.error}`} className="flex items-center justify-between gap-4 py-2">
+            <li key={`${task.title}-${task.url ?? task.error}`} className="flex items-center justify-between gap-4 px-3 py-2">
               <span>{task.title}</span>
               {task.url ? (
                 <a href={task.url} target="_blank" rel="noreferrer" className="text-accent">

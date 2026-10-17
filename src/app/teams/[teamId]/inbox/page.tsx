@@ -1,8 +1,11 @@
 import Link from "next/link";
-import { cardClass } from "@/components/styles";
+import { Icon } from "@/components/icons";
+import { PageBody, PageHeader } from "@/components/page-parts";
+import { buttonClass, cardClass, rowClass } from "@/components/styles";
 import { markNotificationRead } from "@/lib/actions/inbox";
 import { requireMembership } from "@/lib/server/auth";
 import { createClient } from "@/lib/supabase/server";
+import { formatInZone } from "@/lib/time";
 
 type NotificationRow = {
   id: string;
@@ -30,44 +33,51 @@ export default async function InboxPage({ params }: { params: Promise<{ teamId: 
   if (error) throw error;
 
   return (
-    <div className="max-w-3xl space-y-4">
-      <h1 className="text-lg font-semibold">Inbox</h1>
-      {data.length === 0 ? (
-        <p className="text-muted">Nothing here yet. Issue links from meetings you joined will appear here.</p>
-      ) : (
-        <ul className={`${cardClass} divide-y divide-border`}>
-          {data.map((n) => (
-            <li key={n.id} className="flex items-center justify-between gap-4 px-4 py-3">
-              <div className="min-w-0">
-                <p className={n.read_at ? "text-muted" : "font-medium"}>
-                  {!n.read_at && <span className="sr-only">Unread: </span>}
-                  {n.title}
-                </p>
-                <p className="space-x-3 text-xs">
-                  {n.kind === "context_required" && !n.resolved_at && <span className="text-warning">Needs your input</span>}
-                  <Link href={`/teams/${teamId}/meetings/${n.meeting_id}`} className="text-accent">
-                    {n.kind === "context_required" ? "Choose meeting context" : "Meeting result"}
-                  </Link>
-                  {n.linear_issue_url && (
-                    <a href={n.linear_issue_url} target="_blank" rel="noreferrer" className="text-accent">
-                      Open in Linear
-                    </a>
-                  )}
-                </p>
-              </div>
-              {!n.read_at && (
-                <form action={markNotificationRead}>
-                  <input type="hidden" name="notificationId" value={n.id} />
-                  <input type="hidden" name="teamId" value={teamId} />
-                  <button type="submit" className="text-xs text-muted hover:text-foreground">
-                    Mark read
-                  </button>
-                </form>
-              )}
-            </li>
-          ))}
-        </ul>
-      )}
-    </div>
+    <>
+      <PageHeader title="Inbox" />
+      <PageBody>
+        {data.length === 0 ? (
+          <p className="rounded-lg border border-dashed border-border px-4 py-10 text-center text-muted">
+            You&apos;re all caught up. Issue links from meetings you joined will appear here.
+          </p>
+        ) : (
+          <ul className={`${cardClass} divide-y divide-border overflow-hidden`}>
+            {data.map((n) => (
+              <li key={n.id} className={rowClass}>
+                <span aria-hidden className={`size-2 shrink-0 rounded-full ${n.read_at ? "" : "bg-accent"}`} />
+                <div className="min-w-0 flex-1">
+                  <p className={`truncate ${n.read_at ? "text-muted" : "font-medium"}`}>
+                    {!n.read_at && <span className="sr-only">Unread: </span>}
+                    {n.title}
+                  </p>
+                  <p className="flex flex-wrap gap-x-3 text-xs">
+                    {n.kind === "context_required" && !n.resolved_at && <span className="text-warning">Needs your input</span>}
+                    <Link href={`/teams/${teamId}/meetings/${n.meeting_id}`} className="text-muted hover:text-foreground">
+                      {n.kind === "context_required" ? "Choose meeting context" : "Meeting result"}
+                    </Link>
+                    {n.linear_issue_url && (
+                      <a href={n.linear_issue_url} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 text-accent hover:underline">
+                        Open in Linear
+                        <Icon name="external" className="size-3" />
+                      </a>
+                    )}
+                  </p>
+                </div>
+                <span className="hidden shrink-0 text-xs text-muted sm:inline">{formatInZone(n.created_at, "UTC")} UTC</span>
+                {!n.read_at && (
+                  <form action={markNotificationRead}>
+                    <input type="hidden" name="notificationId" value={n.id} />
+                    <input type="hidden" name="teamId" value={teamId} />
+                    <button type="submit" className={`${buttonClass.ghost} h-7 px-2 text-xs`}>
+                      Mark read
+                    </button>
+                  </form>
+                )}
+              </li>
+            ))}
+          </ul>
+        )}
+      </PageBody>
+    </>
   );
 }

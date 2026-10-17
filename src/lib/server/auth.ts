@@ -14,22 +14,29 @@ export type CurrentUser = {
 
 export type TeamRole = "owner" | "member";
 
-/** Data access layer entry point: the verified user for this request, or null. */
-export const getCurrentUser = cache(async (): Promise<CurrentUser | null> => {
+/** The auth server's verified user for this request; shared so profile and membership reads can run in parallel. */
+const getAuthUser = cache(async () => {
   const supabase = await createClient();
   const { data, error } = await supabase.auth.getUser();
-  if (error || !data.user) return null;
-  const github = data.user.identities?.find((identity) => identity.provider === "github")?.identity_data;
+  return error ? null : data.user;
+});
+
+/** Data access layer entry point: the verified user for this request, or null. */
+export const getCurrentUser = cache(async (): Promise<CurrentUser | null> => {
+  const user = await getAuthUser();
+  if (!user) return null;
+  const supabase = await createClient();
+  const github = user.identities?.find((identity) => identity.provider === "github")?.identity_data;
   const githubLogin = typeof github?.user_name === "string" && /^[A-Za-z0-9][A-Za-z0-9-]{0,38}$/.test(github.user_name) ? github.user_name : null;
 
   const { data: profile } = await supabase
     .from("profiles")
     .select("display_name, github_login, avatar_url, email, email_verified")
-    .eq("id", data.user.id)
+    .eq("id", user.id)
     .maybeSingle();
 
   return {
-    id: data.user.id,
+    id: user.id,
     displayName: profile?.display_name || profile?.github_login || "Signed-in user",
     githubLogin,
     avatarUrl: profile?.avatar_url ?? null,
@@ -47,7 +54,7 @@ export async function requireUser(nextPath = "/"): Promise<CurrentUser> {
 export type TeamMembership = { teamId: string; teamName: string; role: TeamRole };
 
 export const listMemberships = cache(async (): Promise<TeamMembership[]> => {
-  const user = await getCurrentUser();
+  const user = await getAuthUser();
   if (!user) return [];
   const supabase = await createClient();
   const { data, error } = await supabase
@@ -67,8 +74,8 @@ export const listMemberships = cache(async (): Promise<TeamMembership[]> => {
  * are not confirmed to outsiders. Use before every team-scoped read or write.
  */
 export async function requireMembership(teamId: string, options: { role?: TeamRole } = {}) {
-  const user = await requireUser(`/teams/${teamId}`);
-  const membership = (await listMemberships()).find((m) => m.teamId === teamId);
+  const [user, memberships] = await Promise.all([requireUser(`/teams/${teamId}`), listMemberships()]);
+  const membership = memberships.find((m) => m.teamId === teamId);
   if (!membership) notFound();
   if (options.role === "owner" && membership.role !== "owner") notFound();
   return { user, membership };
@@ -76,8 +83,8 @@ export async function requireMembership(teamId: string, options: { role?: TeamRo
 
 /** Like requireMembership, but returns null instead of rendering a 404 (for route handlers/actions). */
 export async function findMembership(teamId: string) {
-  const user = await getCurrentUser();
+  const [user, memberships] = await Promise.all([getCurrentUser(), listMemberships()]);
   if (!user) return null;
-  const membership = (await listMemberships()).find((m) => m.teamId === teamId);
+  const membership = memberships.find((m) => m.teamId === teamId);
   return membership ? { user, membership } : null;
 }

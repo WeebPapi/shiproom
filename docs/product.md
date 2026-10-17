@@ -47,7 +47,7 @@ Deferred: Google/Outlook calendar sync, email delivery, guest/anonymous access, 
 
 Use a restrained Linear-inspired shell: compact sidebar, clear typography, consistent spacing, limited accent color, keyboard-accessible dialogs, and visible focus. Favor a clear primary action per screen. Do not copy Linear branding or proprietary assets.
 
-- **Home/calendar:** upcoming calls in calendar/list view, start huddle, recent meetings, unread inbox.
+- **Home/calendar:** upcoming calls in calendar/list view, start huddle, recent meetings, unread inbox. Signed-in users without a team land on the same app shell with an inline create-team form and invitation guidance, not a separate setup page; teams can also be created and switched from the sidebar team menu.
 - **Connections/team:** connected status, chosen Linear workspace/team, available repos, members and invitations. Explain reconnect/permission failures.
 - **Call:** meeting title, repo/project chips and deep links, agenda, participants, share-first layout, mic/camera/device/share controls, transcription indicator and optional transcript panel. Use provider call controls first; custom controls must preserve their behavior and accessibility.
 - **Result:** processing stage, context prompt, decisions, open questions, task evidence, issue URLs, per-task errors, and safe resume action.

@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { Icon } from "@/components/icons";
 import { buttonClass } from "@/components/styles";
 import { createClient } from "@/lib/supabase/browser";
 import { authCallbackUrl } from "@/lib/redirect";
@@ -28,7 +29,8 @@ export function GitHubSignInButton(props: { supabaseUrl: string; supabasePublish
 
   return (
     <div className="space-y-2">
-      <button type="button" onClick={signIn} disabled={pending} className={`${buttonClass.primary} w-full py-2`}>
+      <button type="button" onClick={signIn} disabled={pending} className={`${buttonClass.secondary} h-9 w-full`}>
+        <Icon name="github" />
         {pending ? "Redirecting to GitHub…" : "Continue with GitHub"}
       </button>
       {error && (

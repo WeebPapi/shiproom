@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { buttonClass, inputClass } from "@/components/styles";
+import { buttonClass, inputClass, labelClass } from "@/components/styles";
 import { createClient } from "@/lib/supabase/browser";
 import { authCallbackUrl } from "@/lib/redirect";
 
@@ -25,12 +25,17 @@ export function EmailSignInForm(props: { supabaseUrl: string; supabasePublishabl
     else setSent(true);
   }
 
-  if (sent) return <p role="status">Check your email for a sign-in link. It brings you back to Shiproom.</p>;
+  if (sent)
+    return (
+      <p role="status" className="rounded-md border border-border bg-surface px-3 py-2.5 text-center">
+        Check your email for a sign-in link. It brings you back to Shiproom.
+      </p>
+    );
 
   return (
     <form onSubmit={submit} className="space-y-3">
       <div>
-        <label htmlFor="email" className="mb-1 block font-medium">
+        <label htmlFor="email" className={labelClass}>
           Email
         </label>
         <input
@@ -41,10 +46,11 @@ export function EmailSignInForm(props: { supabaseUrl: string; supabasePublishabl
           required
           value={email}
           onChange={(event) => setEmail(event.target.value)}
-          className={inputClass}
+          placeholder="you@company.com"
+          className={`${inputClass} h-9`}
         />
       </div>
-      <button type="submit" className={`${buttonClass.primary} w-full py-2`} disabled={pending}>
+      <button type="submit" className={`${buttonClass.primary} h-9 w-full`} disabled={pending}>
         {pending ? "Sending…" : "Email me a sign-in link"}
       </button>
       {error && (

@@ -10,9 +10,9 @@ export default async function InvitePage({ params }: { params: Promise<{ token: 
   const user = await requireUser(`/invite/${encodeURIComponent(token)}`);
 
   return (
-    <main className="mx-auto flex min-h-screen max-w-md flex-col justify-center p-6">
-      <section className={`${cardClass} space-y-3 p-5`}>
-        <h1 className="text-lg font-semibold">Join a Shiproom team</h1>
+    <main className="mx-auto flex min-h-dvh max-w-md flex-col justify-center p-6">
+      <section className={`${cardClass} space-y-3 p-6 shadow-xs`}>
+        <h1 className="text-lg font-semibold tracking-tight">Join a Shiproom team</h1>
         <p className="text-muted">
           The invitation must match your verified GitHub email
           {user.email ? (
