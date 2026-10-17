@@ -58,6 +58,8 @@ If billing or setup blocks a provider, use the relevant documented fallback and 
 
 ## Change and verification log
 
+- **2026-10-17 — Supabase OAuth verified:** completed authorization using the signed-in preview browser. `codex mcp login supabase` exited successfully and the CLI reports `auth_status: o_auth`. The existing session has no Supabase tools loaded and its resource lookup reports an unknown server; a session reload and actual read-only project query remain necessary. No database/schema changes or application integration were performed.
+
 - **2026-10-17 — Supabase agent connection initiated:** added the user's project-scoped Supabase HTTP MCP server to local Codex configuration and verified its enabled URL with `codex mcp get supabase`. The add command automatically started browser OAuth; user sign-in/authorization and live tool access remain pending. No database changes were made and no optional agent-skill package was installed.
 
 - **2026-10-17 — storage setup guidance:** user's Supabase screenshot shows bucket `shiproom-audio`, private visibility, size restriction disabled, and MIME restriction enabled with no list entered. Adopted that bucket name in the setup/architecture contracts and documented a 25 MB cap plus initial audio MIME allowlist. Saving settings, access policies, and actual uploads remain unverified.
