@@ -58,6 +58,8 @@ If billing or setup blocks a provider, use the relevant documented fallback and 
 
 ## Change and verification log
 
+- **2026-10-17 — storage setup guidance:** user's Supabase screenshot shows bucket `shiproom-audio`, private visibility, size restriction disabled, and MIME restriction enabled with no list entered. Adopted that bucket name in the setup/architecture contracts and documented a 25 MB cap plus initial audio MIME allowlist. Saving settings, access policies, and actual uploads remain unverified.
+
 - **2026-10-17 — setup preparation:** verified GitHub and Vercel CLI identity; created and locally linked Vercel project `shiproom` under `weebpapis-projects`, then configured and inspected Next.js / Node 24.x. Recorded dedicated Linear workspace and manual onboarding decisions, switched the active extraction recommendation to the existing OpenAI account, added configuration templates/ignores and exact callback contracts. Current Linear connector sees only ARCI; no workspace was changed. No app, provider integration, billing signup, or model request was executed.
 - **2026-10-17 — setup checks:** validated 11 Markdown files, 66 local links, balanced code fences, Unicode text, vocabulary JSON, unique environment-template keys, and generated secret lengths without printing values. Verified `.env.local` and `.vercel/project.json` are ignored while `.env.example` is eligible for tracking. Application checks remain inapplicable before scaffolding.
 

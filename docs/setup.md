@@ -18,7 +18,13 @@ No live integration, billing setup, database, OAuth app, or production hostname 
 - [ ] Sign into [Supabase](https://supabase.com/dashboard). Create a project named **shiproom-dev** in your organization. Choose the free plan and a nearby European region such as Frankfurt if available. Store the database password in your password manager; the app does not need it in `.env.local`.
 - [ ] Wait for provisioning. From the project Connect dialog/settings, copy the project URL to `NEXT_PUBLIC_SUPABASE_URL`. In **Settings → API Keys**, copy the publishable key to `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` and the legacy `service_role` key to `SUPABASE_SERVICE_ROLE_KEY`. The latter is server-only and bypasses RLS. Do not substitute the anonymous key for it.
 - [ ] In **Authentication → URL Configuration**, initially set Site URL to `http://localhost:3000`; add `http://localhost:3000/auth/callback` to allowed redirect URLs.
-- [ ] In **Storage**, create a **private** bucket named `meeting-audio`, with a 25 MB file-size limit. Leave anonymous/public access disabled. The skeleton agent must add ownership-based upload/read policies and the precise supported audio MIME allowlist with the upload implementation; do not grant blanket authenticated access.
+- [ ] In **Storage**, use the bucket named `shiproom-audio` (the name shown in the user's setup screenshot). Keep **Public bucket off**. Turn **Restrict file size on** and set **25 MB**. Turn **Restrict MIME types on**, paste the following comma-separated list, then **Save**:
+
+  ```text
+  audio/mpeg, audio/mp4, audio/x-m4a, audio/wav, audio/x-wav, audio/webm, audio/ogg, audio/flac, audio/x-flac, audio/aac
+  ```
+
+  This initial allowlist covers common MP3/M4A/WAV/WebM/Ogg/FLAC/AAC audio and common MIME aliases; it is not proof that an uploaded file is valid audio. The upload implementation must validate real format/duration and handle MIME detection consistently. Keep storage private and add ownership-based upload/read policies; do not grant blanket authenticated access. [Supabase upload restrictions](https://supabase.com/docs/guides/storage/buckets/creating-buckets), [Deepgram formats](https://developers.deepgram.com/docs/supported-audio-formats).
 - [ ] Do not manually invent database tables. The agent will create checked-in migrations and RLS policies from [Architecture](architecture.md).
 
 ### 2. GitHub login through Supabase
