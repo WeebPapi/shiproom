@@ -45,6 +45,6 @@ Documentation guidance lives in both [AGENTS.md](../AGENTS.md) and [CLAUDE.md](.
 
 ## Evidence and demo data
 
-Use invented participant names and synthetic audio/transcripts in committed fixtures. Reference acceptance IDs AC1-AC8 from [Product](product.md) in verification notes. Keep real-workspace smoke-test evidence brief: date, commit, provider behavior checked, result, and any limit; do not copy sensitive payloads into the repo.
+Use invented participant names and synthetic audio/transcripts in committed fixtures. Reference acceptance IDs AC1-AC9 from [Product](product.md) in verification notes, including native-speaker review for the Georgian target. Keep real-workspace smoke-test evidence brief: date, commit, provider behavior checked, result, and any limit; do not copy sensitive payloads into the repo.
 
 The public demo must disclose preconfigured connections, public-only GitHub context, upload-only capture, or any other scope reduction that remains. The spec describes the intended product; status documents what the current build can actually do.

@@ -14,6 +14,7 @@ Last updated: 2026-10-17. Update this file for relevant decisions and verified p
 - **D8 — delivery:** four developers, heavy coding-agent usage, 24 hours, TypeScript/Next.js preference, web deployment.
 - **D9 — living docs:** maintain the vision and final intended scope, with relevant updates required in both agent instruction entry points. No automated enforcement requested.
 - **D10 — publication:** create a new public `WeebPapi/shiproom` GitHub repository for this checkout and its documentation.
+- **D11 — Georgian:** transcription should preferably support Georgian alongside English. HappyScribe was suggested for evaluation, not mandated as the provider. Language support and practical developer-conversation accuracy both need verification.
 
 ## Initial engineering defaults
 
@@ -25,7 +26,7 @@ These are scoped implementation recommendations, chosen to make the request conc
 - **E4 — extraction:** schema-constrained Gemini Flash JSON with local semantic checks and transcript/source evidence. One model/provider initially, with a real extraction smoke test before freezing the scaffold model ID.
 - **E5 — GitHub:** separate identity login from selected-repo read access; prefer a read-only GitHub App. Public-repo-only context is an explicit fallback, not completion of private repo onboarding.
 - **E6 — reliability:** freeze one task batch, preallocate UUID v4 issue IDs, reconcile external timeouts by that ID, persist participant notifications. Context ambiguity blocks writes. No automatic re-publication after a completed batch.
-- **E7 — demo bounds:** four authenticated users, desktop Chrome/Edge, English speech; uploads up to 25 MB/15 minutes, up to ten grounded tasks, bounded context reads. Broader support needs a later decision and verification.
+- **E7 — demo bounds:** four authenticated users, desktop Chrome/Edge, English and preferably Georgian speech with explicit language selection; uploads up to 25 MB/15 minutes, up to ten grounded tasks, bounded context reads. Georgian has an early quality gate; broader languages and unrestricted code-switching need later verification.
 - **E8 — deployment:** Vercel web app, hosted Supabase, Inngest Cloud, hosted Daily. Confirm account/hosting limits during setup; do not turn a docs recommendation into an unapproved paid signup.
 - **E9 — REA:** optional future investigation tool, not the app base or runtime. Document/manifest assessment only; see [Integrations](integrations.md).
 
@@ -55,3 +56,4 @@ If billing or setup blocks a provider, use the relevant documented fallback and 
 - **2026-10-17 — documentation baseline:** captured user clarifications, two planning demo paths, agent doc-maintenance rules, architecture contracts, provider comparison/REA assessment, and four-developer delivery gates. Application functionality is still unimplemented. Provider documentation was reviewed; no provider integration was exercised.
 - **2026-10-17 — documentation checks:** nine Markdown files and 35 local links checked; JSON example parsed and code fences balanced. Reviewed scope consistency against calendar + `.ics`, in-app-only delivery, automatic issue creation, and live/upload parity. Application tests are not applicable before scaffolding.
 - **2026-10-17 — GitHub publication:** created the public repository and pushed the documentation baseline (`e82523b`); verified public visibility, default branch `master`, and matching remote commit. No app or live integration is deployed.
+- **2026-10-17 — Georgian/HappyScribe clarification:** replaced the English-only demo assumption with a Georgian target, selected-language contract, and AC9 quality gate. Current Deepgram Nova-3 docs list Georgian; Daily exposes model/language options. HappyScribe's developer docs also list Georgian and a batch Orders API. Retained Daily/Deepgram as the initial recommendation pending real samples/account access; documented HappyScribe as an alternative. No provider or Georgian audio test has run.

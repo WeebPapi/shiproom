@@ -25,6 +25,7 @@ A and C agree provider helpers and credential boundaries; B and C agree transcri
 
 - Assign lane owners and a deployment owner; confirm credentials for Supabase, Daily, Deepgram, Linear, GitHub, Gemini, and Inngest privately.
 - Confirm Daily paid transcription/webhook access in hour 1. If unavailable, declare upload the guaranteed capture path immediately.
+- B checks a short Georgian sample in Deepgram and, if API access is available, HappyScribe; obtain native-speaker review. Check Daily Nova-3/Georgian configuration separately. Record quality, latency, account access, and the selected provider before polishing capture. Language-list support alone does not pass this gate.
 - A scaffolds once, commits the lockfile, records actual commands/environment variables, and creates shared schemas from [Architecture](architecture.md).
 - Establish real Linear issue creation with a preallocated UUID and read-only GitHub context retrieval. Smoke-test the selected extraction model with synthetic text.
 - D establishes the shell/context dialog using the agreed contract; fixtures are visibly labeled temporary. B proves media independently.
@@ -70,5 +71,6 @@ These are checks to implement/run once code exists, not a claim of current test 
 - [ ] **Calendar/UI:** create a scheduled call in a non-UTC timezone, refresh, import `.ics`, and verify time/link; huddle bypasses schedule; dialogs work by keyboard; errors and processing/empty states are understandable.
 - [ ] **Deployment:** actual build/typecheck/lint and focused tests pass; OAuth redirects, HTTPS media permissions, webhook signatures, background processing, and provider quotas work on the demo URL. Secrets and private data are absent from browser bundles and Git.
 - [ ] **Delivery:** every actual participant gets task links in-app, including early leavers; an offline organizer sees the context prompt on return; no email is sent.
+- [ ] **Georgian (AC9):** native-speaker review checks a Georgian planning clip with English code/repo terms, commitments and negations; transcript evidence and resulting tasks retain the meaning. Check upload and live separately, preserve Georgian text, and disclose unverified code-switching or failed paths.
 
 For an upload-only demo, mark live-call checks explicitly incomplete and state the fallback in the demo introduction. A failed check changes the completion claim, not the acceptance criterion.
