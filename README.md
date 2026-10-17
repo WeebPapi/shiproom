@@ -6,7 +6,7 @@ Browser-based meetings that turn developer conversations into project work.
 
 Shiproom brings a simple, Linear-inspired meeting experience together with Linear project context and GitHub repository context. Teams schedule a planning call or start a huddle, talk normally, and receive links to automatically created `[shiproom]` Linear issues. Each issue explains the agreed work and cites the conversation behind it.
 
-**Status: hackathon slice on top of the identity skeleton; nothing deployed.** Email magic-link sign-in, a Daily call, Claude extraction, and Linear personal-key issues are implemented for English. GitHub sign-in is postponed. Issues are created only when a Linear team or project name contains "Shiproom". Run it with `npm install && npm run dev`; full commands are in [Development](docs/development.md). Requirements below describe the intended product; they are not claims that the full scope is verified.
+**Status: hackathon slice on top of the identity skeleton; nothing deployed.** Email magic-link sign-in, a Daily call, Claude extraction, and Linear personal-key issues are implemented for English. GitHub sign-in and public repository suggestions are implemented; owners approve repositories for the team's meeting picker. Issues are created only when a Linear team or project name contains "Shiproom". Run it with `npm install && npm run dev`; full commands are in [Development](docs/development.md). Requirements below describe the intended product; they are not claims that the full scope is verified.
 
 ## Start here
 

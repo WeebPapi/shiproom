@@ -8,3 +8,10 @@ export function safeNextPath(value: string | null | undefined, fallback = "/"): 
     return fallback;
   }
 }
+
+/** PKCE cookies belong to the origin that started sign-in. */
+export function authCallbackUrl(origin: string, next: string): string {
+  const callback = new URL("/auth/callback", origin);
+  callback.searchParams.set("next", safeNextPath(next));
+  return callback.toString();
+}

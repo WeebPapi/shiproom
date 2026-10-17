@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { safeNextPath } from "./redirect";
+import { authCallbackUrl, safeNextPath } from "./redirect";
 import {
   contextModeFor,
   extractionResultSchema,
@@ -65,5 +65,12 @@ describe("shared contracts", () => {
     expect(safeNextPath("//evil.example")).toBe("/");
     expect(safeNextPath("https://evil.example")).toBe("/");
     expect(safeNextPath("/\\evil.example")).toBe("/");
+  });
+
+  it("keeps PKCE callbacks on the initiating origin and preserves a safe destination", () => {
+    for (const origin of ["http://localhost:3000", "https://demo.example.com"]) {
+      expect(authCallbackUrl(origin, "/invite/abc?from=team")).toBe(`${origin}/auth/callback?next=%2Finvite%2Fabc%3Ffrom%3Dteam`);
+      expect(authCallbackUrl(origin, "//evil.example")).toBe(`${origin}/auth/callback?next=%2F`);
+    }
   });
 });

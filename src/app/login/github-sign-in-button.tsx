@@ -3,8 +3,9 @@
 import { useState } from "react";
 import { buttonClass } from "@/components/styles";
 import { createClient } from "@/lib/supabase/browser";
+import { authCallbackUrl } from "@/lib/redirect";
 
-export function GitHubSignInButton(props: { supabaseUrl: string; supabasePublishableKey: string; appUrl: string; next: string }) {
+export function GitHubSignInButton(props: { supabaseUrl: string; supabasePublishableKey: string; next: string }) {
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -12,13 +13,17 @@ export function GitHubSignInButton(props: { supabaseUrl: string; supabasePublish
     setPending(true);
     setError(null);
     const supabase = createClient(props.supabaseUrl, props.supabasePublishableKey);
-    const redirectTo = new URL("/auth/callback", props.appUrl);
-    redirectTo.searchParams.set("next", props.next);
-    const { error } = await supabase.auth.signInWithOAuth({ provider: "github", options: { redirectTo: redirectTo.toString() } });
-    if (error) {
-      setError("GitHub sign-in couldn't start. Try again.");
-      setPending(false);
+    try {
+      const { error } = await supabase.auth.signInWithOAuth({
+        provider: "github",
+        options: { redirectTo: authCallbackUrl(window.location.origin, props.next) },
+      });
+      if (!error) return;
+    } catch {
+      // Network failures must let the user retry too.
     }
+    setError("GitHub sign-in couldn't start. Try again.");
+    setPending(false);
   }
 
   return (

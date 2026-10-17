@@ -20,7 +20,7 @@ export default async function LoginPage({ searchParams }: { searchParams: Promis
       <div className="space-y-2">
         <h1 className="text-xl font-semibold">Sign in to Shiproom</h1>
         <p className="text-muted">
-          Meetings that turn agreed work into Linear issues. Signing in does not add you to a team; an owner has to invite you. GitHub sign-in is postponed.
+          Meetings that turn agreed work into Linear issues. Sign in with GitHub or email. Joining an existing team requires an owner’s invitation.
         </p>
       </div>
       {params.error === "signin_failed" && (
@@ -28,8 +28,8 @@ export default async function LoginPage({ searchParams }: { searchParams: Promis
           Sign-in didn&apos;t complete. Try again.
         </p>
       )}
-      <EmailSignInForm supabaseUrl={env.supabaseUrl} supabasePublishableKey={env.supabasePublishableKey} appUrl={env.appUrl} next={next} />
-      <GitHubSignInButton supabaseUrl={env.supabaseUrl} supabasePublishableKey={env.supabasePublishableKey} appUrl={env.appUrl} next={next} />
+      <GitHubSignInButton supabaseUrl={env.supabaseUrl} supabasePublishableKey={env.supabasePublishableKey} next={next} />
+      <EmailSignInForm supabaseUrl={env.supabaseUrl} supabasePublishableKey={env.supabasePublishableKey} next={next} />
     </main>
   );
 }

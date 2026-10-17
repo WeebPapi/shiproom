@@ -63,7 +63,7 @@ A team-restricted personal API key may unblock the first private developer smoke
 
 ## GitHub: identity and read-only source context
 
-Use Supabase's GitHub sign-in for identity; verify email availability and handle users who keep email private. Do not assume identity OAuth gives repository access. [Supabase GitHub login](https://supabase.com/docs/guides/auth/social-login/auth-github).
+Use Supabase's GitHub sign-in for identity (implemented alongside email sign-in); the provider requests read-only `user:email`, with no repository scope. Verify email availability and handle users who keep email private. Public repository suggestions use unauthenticated GitHub reads and can hit the unauthenticated rate limit; the owner can still enter owner/name. See [Architecture](architecture.md#system-boundaries) for discovery and approval behavior. Do not assume identity OAuth gives repository access. [Supabase GitHub login](https://supabase.com/docs/guides/auth/social-login/auth-github).
 
 For private repository context, prefer a GitHub App installed on selected repositories with **Metadata, Contents, Issues, and Pull requests: read-only** permissions. The owner explicitly grants the app's repo allowlist to a Shiproom team; scope it on every request. Keep installation tokens server-side and short-lived. Individual linked GitHub identities are not a reason to expose all repositories they can access. [Permission guide](https://docs.github.com/en/apps/creating-github-apps/setting-up-a-github-app/choosing-permissions-for-a-github-app).
 

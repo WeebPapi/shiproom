@@ -8,13 +8,15 @@ export async function GET(request: NextRequest) {
   const code = searchParams.get("code");
   const next = safeNextPath(searchParams.get("next"));
 
-  if (code) {
+  if (code && !searchParams.has("error")) {
     const supabase = await createClient();
     const { error } = await supabase.auth.exchangeCodeForSession(code);
-    if (!error) return NextResponse.redirect(new URL(next, origin));
+    // Relative locations preserve the browser origin when a proxy forwards to localhost.
+    if (!error) return new NextResponse(null, { status: 307, headers: { Location: next } });
     console.error("Supabase code exchange failed", error.message);
   }
   const login = new URL("/login", origin);
   login.searchParams.set("error", "signin_failed");
-  return NextResponse.redirect(login);
+  login.searchParams.set("next", next);
+  return new NextResponse(null, { status: 307, headers: { Location: login.pathname + login.search } });
 }

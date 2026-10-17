@@ -23,9 +23,11 @@ npm run dev        # http://localhost:3000
 | `npm run build` | Production build (works without `.env.local`; pages render a setup notice) | Passed |
 | `npm run typecheck` | `tsc --noEmit` | Passed |
 | `npm run lint` | ESLint (Next.js config) | Passed |
-| `npm test` | Vitest: contracts, crypto, timezone conversion, and RLS against the migration in PGlite | 22 passed |
+| `npm test` | Vitest: contracts, OAuth callback handling, public GitHub API failures, crypto, timezone conversion, and RLS against the migrations in PGlite | 37 passed |
 
 Without `NEXT_PUBLIC_SUPABASE_URL`/`NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` the app shows "Shiproom isn't configured yet" instead of crashing. Missing server keys produce explicit "not configured" states (Connections page → Server setup), never fake success. There is no local Inngest server yet; the workflow lane adds it with `/api/inngest`.
+
+The GitHub OAuth change also passed build, typecheck, lint, and all 37 tests on Node 22.13.1 (the current shell); Node 24 remains the project target. Stale generated route types were refreshed with `npx next typegen` before typecheck.
 
 ## Database migrations
 
@@ -38,6 +40,7 @@ Run it once per project; it is not idempotent. Afterward, confirm with a signed-
 
 ## Auth and callback URLs
 
+- Browser GitHub and email sign-in return to `/auth/callback` on the origin where sign-in began. Allow each development origin (including localhost and the exact Tailscale HTTPS hostname) in Supabase; `NEXT_PUBLIC_APP_URL` remains the canonical base for shared links, not the sign-in callback. Keep the same origin through the PKCE exchange. For Tailscale development, allow `https://desktop-jjp034u.tail51e7da.ts.net/**` to cover `/auth/callback?next=...`; an HTTP entry with `:3000` does not match this HTTPS origin. Supabase matches allowlist patterns against the URL including its query string ([provider source](https://github.com/supabase/auth/blob/master/internal/utilities/request.go)).
 - Supabase Auth → URL Configuration must allow `<origin>/auth/callback`. GitHub's OAuth app callback stays `https://<project-ref>.supabase.co/auth/v1/callback`, and the GitHub provider must be enabled on the **same** project as `NEXT_PUBLIC_SUPABASE_URL`.
 - Linear OAuth app redirect: `<origin>/api/integrations/linear/callback`, scopes `read,issues:create`. Connect requires `LINEAR_CLIENT_ID`, `LINEAR_CLIENT_SECRET`, `CREDENTIAL_ENCRYPTION_KEY`, and `SUPABASE_SERVICE_ROLE_KEY`.
 - `/api/webhooks/daily`, `/api/webhooks/deepgram`, and `/api/inngest` are not implemented (they 404). The media and workflow lanes own them; `src/proxy.ts` already excludes them from session handling.

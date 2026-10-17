@@ -19,6 +19,8 @@ export const getCurrentUser = cache(async (): Promise<CurrentUser | null> => {
   const supabase = await createClient();
   const { data, error } = await supabase.auth.getUser();
   if (error || !data.user) return null;
+  const github = data.user.identities?.find((identity) => identity.provider === "github")?.identity_data;
+  const githubLogin = typeof github?.user_name === "string" && /^[A-Za-z0-9][A-Za-z0-9-]{0,38}$/.test(github.user_name) ? github.user_name : null;
 
   const { data: profile } = await supabase
     .from("profiles")
@@ -29,7 +31,7 @@ export const getCurrentUser = cache(async (): Promise<CurrentUser | null> => {
   return {
     id: data.user.id,
     displayName: profile?.display_name || profile?.github_login || "Signed-in user",
-    githubLogin: profile?.github_login ?? null,
+    githubLogin,
     avatarUrl: profile?.avatar_url ?? null,
     email: profile?.email ?? null,
     emailVerified: profile?.email_verified ?? false,

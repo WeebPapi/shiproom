@@ -22,6 +22,8 @@ Last updated: 2026-10-17. Update this file for relevant decisions and verified p
 - **D16 — English-first (2026-10-17):** build and demo English first. Georgian stays a selectable language (the `en`/`ka` contract is unchanged) and a product target, but the default is `en` and Georgian quality work (AC9) is deferred until the English path works. The BTU Georgian dataset is not an ASR evaluation source or a committable resource; see [Integrations](integrations.md#georgian-and-happyscribe).
 - **D17 — extraction provider (2026-10-17):** for this developer's hackathon path, extraction uses Anthropic Claude. The API key lives only in ignored `.env.local`. This replaces the OpenAI `gpt-5-mini` default for that path. OpenAI remains the original team default until the team agrees.
 
+- **D18 - GitHub sign-in restored (2026-10-17):** implement working GitHub OAuth and its in-app repository discovery. User confirmed public repositories first; private GitHub App onboarding stays deferred. Owners explicitly approve suggested repositories before they appear in meeting context.
+
 ## Initial engineering defaults
 
 These are scoped implementation recommendations, chosen to make the request concrete. They can change with evidence; record changes here and update dependent contracts before implementation diverges.
@@ -39,12 +41,18 @@ These are scoped implementation recommendations, chosen to make the request conc
 
 ## Implementation ledger
 
+- **2026-10-17 Tailscale allowlist mismatch identified:** the user supplied saved `http://desktop-jjp034u.tail51e7da.ts.net:3000/...` entries. The browser uses `https://desktop-jjp034u.tail51e7da.ts.net/...`; the scheme and port differ. The matching HTTPS entry was subsequently saved and the full flow passed (verification below).
+
+- **2026-10-17 Tailscale OAuth recheck:** the user reports the callback URL has been added. Retried the normal GitHub flow and the exact callback URL without `next`; both hosted Supabase callback responses went directly to the localhost Site URL, with no Tailscale callback request in the browser network trace. The query parameter is therefore not the cause of this observed fallback. The supplied saved entries later identified the scheme/port mismatch; after correction, testing exposed the separate reverse-proxy redirect bug fixed below.
+
+- **2026-10-17 GitHub OAuth verification:** fixed callbacks crossing from localhost to the configured Tailscale hostname, retained safe return destinations after cancellation, and added public repository suggestions with explicit owner approval. Live developer-project checks passed: GitHub consent, Supabase PKCE exchange, authenticated refresh, real repository suggestions, public repository approval, and propagation into the meeting picker. The temporary verification team and its repository approval were removed. At this initial check, Tailscale sign-in was blocked by a callback allowlist mismatch; subsequently resolved below. See [Setup](setup.md#agent-visible-status). `npm test` passed all 35 tests; build, typecheck, lint, and `git diff --check` passed. The cancellation regression failed against the original callback before passing with the fix. Checks used Node 22.13.1; target Node 24, canonical-project login, private repositories, and private-email accounts were not verified.
+
 - Documentation foundation: written and validated; published in the public [WeebPapi/shiproom repository](https://github.com/WeebPapi/shiproom) on `master`.
 - Setup preparation: [manual checklist and skeleton handoff](setup.md), `.env.example`, and secret/build ignore rules written. Vercel `weebpapis-projects/shiproom` created, linked locally, and verified as Next.js / Node 24.x. No Git auto-deployment connection or app deployment yet. Supabase `shiproom-dev` (`fnrdatkgwdtsqmvstrlp`, Tokyo), GitHub login OAuth, and private `shiproom-audio` bucket settings are configured; Linear/Daily/Deepgram/Inngest/OpenAI keys and the app scaffold are not. ARCI has not been modified.
 - App scaffold / local commands: **implemented** (Next.js 16.4, npm, Node 24 pinned); build, typecheck, lint and tests pass locally. Not deployed.
 - Database schema/RLS/storage policies: **implemented**. Initial migration applied to personal project `bovjaxluyejvmgulvypz`; RLS verified in PGlite. `20261017191500_browser_transcript_source.sql` adds the labeled `browser` transcript source.
-- Auth, team membership, invitations: **implemented**. Email magic-link sign-in is the hackathon path; GitHub sign-in is postponed. Not verified live.
-- Linear OAuth/context and GitHub repository connection: **implemented** (Linear OAuth with encrypted token storage; public-repo allowlist). Not verified: no Linear OAuth app or `service_role` key yet.
+- Auth, team membership, invitations: **implemented**. GitHub and email sign-in are implemented. GitHub sign-in was verified live on the developer Supabase project; membership still requires explicit team creation or invitation.
+- Linear OAuth/context and GitHub repository connection: **implemented** (Linear OAuth with encrypted token storage; public-repo allowlist and account-based suggestions). Public GitHub discovery, approval, and meeting picker propagation were verified locally on the developer project. Linear OAuth remains unverified.
 - Calendar/huddles/context UI: **partially implemented**: shell, home list of upcoming/recent meetings, shared context dialog (schedule/huddle), meeting placeholder, inbox, members, connections. Calendar grid view and `.ics` not built.
 - Live calls and durable transcription: **partial** — English Daily room, short-lived token, and stored-transcript fetch exist. A live transcript has not been verified. Browser speech recognition is the labeled fallback when Daily produces nothing.
 - Upload fallback and normalization: not started.

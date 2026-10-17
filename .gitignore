@@ -3,6 +3,8 @@
 !.env.example
 .vercel/
 *.pem
+*.crt
+*.key
 
 # App build artifacts
 node_modules/

@@ -4,6 +4,7 @@ import { requireMembership } from "@/lib/server/auth";
 import { integrationReadiness } from "@/lib/server/config";
 import { listTeamRepositories } from "@/lib/server/connections";
 import { createClient } from "@/lib/supabase/server";
+import { listPublicRepositories } from "@/lib/server/github";
 import { AddRepositoryForm } from "./add-repository-form";
 
 const LINEAR_RESULT: Record<string, { tone: "success" | "danger"; text: string }> = {
@@ -24,12 +25,12 @@ export default async function ConnectionsPage({
 }) {
   const { teamId } = await params;
   const { linear: linearResult } = await searchParams;
-  const { membership } = await requireMembership(teamId);
+  const { membership, user } = await requireMembership(teamId);
   const isOwner = membership.role === "owner";
   const readiness = integrationReadiness();
 
   const supabase = await createClient();
-  const [{ data: linear }, repositories] = await Promise.all([
+  const [{ data: linear }, repositories, githubRepos] = await Promise.all([
     supabase
       .from("connections")
       .select("external_account_name, external_account_url, status")
@@ -37,6 +38,7 @@ export default async function ConnectionsPage({
       .eq("provider", "linear")
       .maybeSingle<{ external_account_name: string | null; external_account_url: string | null; status: "active" | "reconnect_required" }>(),
     listTeamRepositories(teamId),
+    isOwner && user.githubLogin ? listPublicRepositories(user.githubLogin) : null,
   ]);
   const result = typeof linearResult === "string" ? LINEAR_RESULT[linearResult] : undefined;
 
@@ -110,6 +112,9 @@ export default async function ConnectionsPage({
           GitHub repositories
         </h2>
         <p className="text-muted">
+          {user.githubLogin ? `Signed in with GitHub as @${user.githubLogin}.` : "Signed in with email. Team owners can add public repositories by owner/name."}
+        </p>
+        <p className="text-muted">
           Shiproom only reads GitHub. Public repositories can be added now; private repositories need the Shiproom GitHub App, which isn&apos;t
           set up yet.
         </p>
@@ -129,7 +134,23 @@ export default async function ConnectionsPage({
         )}
         {isOwner &&
           (readiness.serverDatabase === "configured" ? (
-            <AddRepositoryForm teamId={teamId} />
+            <>
+              {githubRepos && githubRepos.status !== "ready" && (
+                <p role="status" className="text-warning">
+                  {githubRepos.status === "rate_limited"
+                    ? "GitHub is rate-limiting repository suggestions. Try again later or enter owner/name."
+                    : "Repository suggestions couldn't load. Try again or enter owner/name."}
+                </p>
+              )}
+              {githubRepos?.status === "ready" && (
+                <p className="text-muted">
+                  {githubRepos.repositories.length
+                    ? "Choose from your recently updated public repositories or enter any public owner/name. Adding a repository makes it available to this team’s meetings."
+                    : "No public repositories found on your GitHub account. Enter a public owner/name to add one."}
+                </p>
+              )}
+              <AddRepositoryForm teamId={teamId} suggestions={githubRepos?.status === "ready" ? githubRepos.repositories.map((repo) => repo.full_name) : []} />
+            </>
           ) : (
             <p className="text-warning">Adding repositories needs server database access, which isn&apos;t configured yet.</p>
           ))}

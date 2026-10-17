@@ -3,8 +3,9 @@
 import { useState } from "react";
 import { buttonClass, inputClass } from "@/components/styles";
 import { createClient } from "@/lib/supabase/browser";
+import { authCallbackUrl } from "@/lib/redirect";
 
-export function EmailSignInForm(props: { supabaseUrl: string; supabasePublishableKey: string; appUrl: string; next: string }) {
+export function EmailSignInForm(props: { supabaseUrl: string; supabasePublishableKey: string; next: string }) {
   const [email, setEmail] = useState("");
   const [pending, setPending] = useState(false);
   const [sent, setSent] = useState(false);
@@ -15,11 +16,9 @@ export function EmailSignInForm(props: { supabaseUrl: string; supabasePublishabl
     setPending(true);
     setError(null);
     const supabase = createClient(props.supabaseUrl, props.supabasePublishableKey);
-    const redirectTo = new URL("/auth/callback", props.appUrl);
-    redirectTo.searchParams.set("next", props.next);
     const { error: signInError } = await supabase.auth.signInWithOtp({
       email: email.trim(),
-      options: { emailRedirectTo: redirectTo.toString(), shouldCreateUser: true },
+      options: { emailRedirectTo: authCallbackUrl(window.location.origin, props.next), shouldCreateUser: true },
     });
     setPending(false);
     if (signInError) setError("The sign-in email could not be sent. Check the address and try again.");

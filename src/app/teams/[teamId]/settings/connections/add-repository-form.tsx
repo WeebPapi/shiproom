@@ -6,7 +6,7 @@ import { FieldError, FormStatus, SubmitButton } from "@/components/ui";
 import { initialActionState } from "@/lib/actions/state";
 import { addPublicRepository } from "@/lib/actions/team";
 
-export function AddRepositoryForm({ teamId }: { teamId: string }) {
+export function AddRepositoryForm({ teamId, suggestions }: { teamId: string; suggestions: string[] }) {
   const [state, action] = useActionState(addPublicRepository, initialActionState);
   return (
     <form action={action} className="space-y-2">
@@ -18,6 +18,7 @@ export function AddRepositoryForm({ teamId }: { teamId: string }) {
         <input
           id="repository"
           name="repository"
+          list="github-repositories"
           required
           placeholder="owner/name"
           className={inputClass}
@@ -26,6 +27,9 @@ export function AddRepositoryForm({ teamId }: { teamId: string }) {
         />
         <SubmitButton pendingLabel="Checking…">Add</SubmitButton>
       </div>
+      <datalist id="github-repositories">
+        {suggestions.map((name) => <option key={name} value={name} />)}
+      </datalist>
       <FieldError state={state} name="repository" />
       <FormStatus state={state} />
     </form>
