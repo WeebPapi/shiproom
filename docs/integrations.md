@@ -79,7 +79,7 @@ Supabase owns sessions, relational state, and private uploads. Direct-to-storage
 
 Use Inngest's Next.js integration for durable post-call processing. Keep secret-bearing job payloads/logs minimal: pass meeting/request IDs, load credentials server-side, and return record IDs from steps rather than full transcripts. Its retry semantics do not guarantee exactly-once external effects; use persisted IDs and reconciliation. [Next.js guide](https://www.inngest.com/docs/getting-started/nextjs-quick-start), [step execution and side effects](https://www.inngest.com/docs/durable-execution/primitives/step-run).
 
-Default web deployment: Next.js on Vercel, Supabase hosted project, Inngest Cloud, and Daily hosted media. Verify the actual hosting duration/body limits and configure job step timeouts accordingly before demo deployment. A Vercel project is prepared; provider billing and remaining account setup are manual steps in [Setup](setup.md). No app has been deployed.
+Default web deployment: Next.js on Vercel, Supabase hosted project, Inngest Cloud, and Daily hosted media. Verify the actual hosting duration/body limits and configure job step timeouts accordingly before demo deployment. A Vercel project is prepared; remaining credentials and billing are in [Setup](setup.md). GitHub login OAuth is configured in Supabase; Linear/Daily/Deepgram/Inngest accounts are not. No app has been deployed.
 
 ## Calendar and delivery
 

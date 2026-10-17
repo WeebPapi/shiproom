@@ -1,6 +1,6 @@
 # 24-hour delivery plan
 
-Status: planning document; all implementation items are unstarted. H0 means the team's agreed build start, not the timestamp of this document. Four developers can own the lanes below and use coding agents within them. Shared contracts and integration verification are collective responsibilities.
+Status: planning document; all implementation items are unstarted. Provider setup is partial (see [Setup](setup.md#agent-visible-status)); that does not start lane A. H0 means the team's agreed build start, not the timestamp of this document. Four developers can own the lanes below and use coding agents within them. Shared contracts and integration verification are collective responsibilities.
 
 ## Demo narrative
 

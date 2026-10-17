@@ -2,7 +2,7 @@
 
 ## Read before working
 
-Read [README.md](README.md), [docs/product.md](docs/product.md), [docs/architecture.md](docs/architecture.md), and [docs/decisions.md](docs/decisions.md). Then read the integration, delivery, or development doc relevant to the task. Inspect the actual code before relying on a documented implementation claim.
+Read [README.md](README.md), [docs/product.md](docs/product.md), [docs/architecture.md](docs/architecture.md), and [docs/decisions.md](docs/decisions.md). Then read the integration, delivery, or development doc relevant to the task. Inspect the actual code before relying on a documented implementation claim. Current provider status is [docs/setup.md](docs/setup.md) (agent-visible status first); remaining scaffold constraints are in [docs/architecture.md](docs/architecture.md#remaining-implementation-constraints).
 
 This is a four-developer, 24-hour hackathon. Complete the planning-to-Linear loop first. Do not expand the scope to code generation, GitHub writes, calendar-provider synchronization, or a general-purpose agent framework.
 

@@ -1,38 +1,52 @@
 # Provider setup and skeleton handoff
 
-Checked 2026-10-17. This is the user's requested manual setup checklist. Check off steps only after doing them; unchecked items are not configured. Keep credentials in the ignored `.env.local` or a password manager, never in chat, Git, or this document. [Architecture](architecture.md) owns callback paths; [Integrations](integrations.md) owns permissions and provider behavior.
+Checked 2026-10-17. This is the user's requested manual setup checklist. Check off steps only after doing them; unchecked items are not configured. Keep credentials in the ignored `.env.local` or a password manager, never in chat, Git, or this document. [Architecture](architecture.md) owns callback paths and remaining implementation constraints; [Integrations](integrations.md) owns permissions and provider behavior.
 
-## Already prepared
+Agents: read **Agent-visible status** and [Architecture remaining constraints](architecture.md#remaining-implementation-constraints) before scaffolding. Do not recreate provisioned resources. Do not treat dashboard configuration as a working app.
 
-- Public repository: [WeebPapi/shiproom](https://github.com/WeebPapi/shiproom), branch `master`.
-- Vercel: [weebpapis-projects / shiproom](https://vercel.com/weebpapis-projects/shiproom), project ID `prj_qQNcfxoVxlZPMtqLYmYoSih9ibRf`. Created, linked to this local checkout, framework **Next.js**, Node **24.x**, root directory `.`. No deployment or Git auto-deployment connection has been made.
-- Committed `.env.example` defines the configuration names. `.gitignore` excludes `.env.local`, `.vercel/`, and private-key `.pem` files. Local preparation creates an ignored `.env.local` with independent random encryption and Daily webhook secrets; provider credentials remain blank. Other clones must copy the example and generate their own development secrets.
-- The connected Linear agent tool currently sees **ARCI projects (ARC)**. It has not been modified. Shiproom needs a separate new workspace; that workspace has not been created.
-- Supabase target project reference: `fnrdatkgwdtsqmvstrlp`, dashboard project **shiproom-dev**. Local Codex has an enabled HTTP MCP server named `supabase`, scoped to that project. Browser OAuth completed: the CLI reported successful login and `codex mcp list --json` reports `auth_status: o_auth`. The already-running agent session has not loaded the new server (`unknown MCP server 'supabase'`); restart/reload the Codex session and verify a read-only project query before claiming working database access. This agent connection does not populate the app's `.env.local` credentials.
+## Agent-visible status
 
-No live integration, billing setup, database, OAuth app, or production hostname is verified. Do not assume `shiproom.vercel.app` belongs to this project.
+| Resource | State | Evidence / remaining |
+| --- | --- | --- |
+| GitHub repo | **configured** | Public [WeebPapi/shiproom](https://github.com/WeebPapi/shiproom), `master`. |
+| Vercel project | **configured, not deployed** | [weebpapis-projects / shiproom](https://vercel.com/weebpapis-projects/shiproom), ID `prj_qQNcfxoVxlZPMtqLYmYoSih9ibRf`. Next.js, Node **24.x**, root `.`. No Git auto-deploy, no production URL. Do not create another project. Do not deploy the docs-only tree. |
+| Supabase project | **configured** | `shiproom-dev`, ref `fnrdatkgwdtsqmvstrlp`, org weebpapi's projects, Free, **Tokyo `ap-northeast-1`** (not Frankfurt). GitHub repo linked. **No migrations.** MCP login is not app credentials. |
+| Supabase Auth URLs | **configured** | Site URL `http://localhost:3000`. Allowed redirect includes `http://localhost:3000/auth/callback`. |
+| GitHub login OAuth | **configured in Supabase** | OAuth App **Shiproom Login**, id `3940221`, owner WeebPapi, homepage `http://localhost:3000`, callback `https://fnrdatkgwdtsqmvstrlp.supabase.co/auth/v1/callback`. GitHub provider enabled. Client secret lives in Supabase, not `.env.local`. Sign-in is **unverified** until the PKCE route exists. |
+| Storage bucket | **configured, no RLS** | `shiproom-audio`: private, 25 MB restrict on, MIME allowlist saved. **Zero storage policies.** Identity lane adds ownership RLS with schema. |
+| Local `.env.local` | **partial** | Present: `NEXT_PUBLIC_APP_URL`, `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`, `CREDENTIAL_ENCRYPTION_KEY`, `DAILY_WEBHOOK_SECRET`, `OPENAI_MODEL`. **Missing:** `SUPABASE_SERVICE_ROLE_KEY`, `OPENAI_API_KEY`, `DAILY_API_KEY`, `DEEPGRAM_API_KEY`, `LINEAR_CLIENT_*`, `INNGEST_*`, `GITHUB_APP_*`. Never print values. |
+| Linear workspace | **not created** | Need dedicated **Shiproom** workspace, team identifier **SHIP**, projects **Shiproom MVP** and **Shiproom Demo**, OAuth app `read,issues:create`, redirect `http://localhost:3000/api/integrations/linear/callback`. Connected Linear MCP still sees **ARCI**. Do not use or modify ARCI. |
+| Daily / Deepgram / Inngest | **unauthenticated** | Dashboards hit login/signup. No API keys in `.env.local`. Do not register webhooks until HTTPS routes exist. |
+| Private GitHub App | **not created** | Public-repo demo fallback is `WeebPapi/shiproom`. Do not request `repo` write scopes. |
+| App scaffold | **not started** | No `package.json`, routes, or schema. Local Node is 22.13.1; Vercel is 24.x — pin the scaffold to 24. |
+
+Configured means a dashboard resource exists. Credentials present means the ignored local env has a non-empty value. Verified means a live check passed. GitHub login, Linear OAuth, Daily transcription, Deepgram upload, OpenAI extraction, and Inngest jobs are **not verified**.
+
+Supabase MCP (Codex and Cursor) can be `ready` after OAuth. That connection does not fill `.env.local` and does not replace checked-in migrations. Reload the agent session before claiming MCP database access.
 
 ## Do now: accounts and credentials
 
 ### 1. Supabase project
 
-- [ ] Sign into [Supabase](https://supabase.com/dashboard). Create a project named **shiproom-dev** in your organization. Choose the free plan and a nearby European region such as Frankfurt if available. Store the database password in your password manager; the app does not need it in `.env.local`.
-- [ ] Wait for provisioning. From the project Connect dialog/settings, copy the project URL to `NEXT_PUBLIC_SUPABASE_URL`. In **Settings → API Keys**, copy the publishable key to `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` and the legacy `service_role` key to `SUPABASE_SERVICE_ROLE_KEY`. The latter is server-only and bypasses RLS. Do not substitute the anonymous key for it.
-- [ ] In **Authentication → URL Configuration**, initially set Site URL to `http://localhost:3000`; add `http://localhost:3000/auth/callback` to allowed redirect URLs.
-- [ ] In **Storage**, use the bucket named `shiproom-audio` (the name shown in the user's setup screenshot). Keep **Public bucket off**. Turn **Restrict file size on** and set **25 MB**. Turn **Restrict MIME types on**, paste the following comma-separated list, then **Save**:
+- [x] Sign into [Supabase](https://supabase.com/dashboard). Project **shiproom-dev** exists in weebpapi's projects on the free plan. Region is **Tokyo (`ap-northeast-1`)**, not Frankfurt; keep using this project. Database password stays in the password manager; the app does not need it in `.env.local`.
+- [x] Project URL and publishable key are in ignored `.env.local` (`NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`).
+- [ ] Copy the legacy `service_role` key to `SUPABASE_SERVICE_ROLE_KEY`. It is server-only and bypasses RLS. Do not substitute the anonymous key for it. Do not paste it into chat or docs.
+- [x] **Authentication → URL Configuration**: Site URL `http://localhost:3000`; allowed redirect includes `http://localhost:3000/auth/callback`.
+- [x] Bucket `shiproom-audio`: **Public bucket off**, **Restrict file size on** at **25 MB**, **Restrict MIME types on** with:
 
   ```text
   audio/mpeg, audio/mp4, audio/x-m4a, audio/wav, audio/x-wav, audio/webm, audio/ogg, audio/flac, audio/x-flac, audio/aac
   ```
 
   This initial allowlist covers common MP3/M4A/WAV/WebM/Ogg/FLAC/AAC audio and common MIME aliases; it is not proof that an uploaded file is valid audio. The upload implementation must validate real format/duration and handle MIME detection consistently. Keep storage private and add ownership-based upload/read policies; do not grant blanket authenticated access. [Supabase upload restrictions](https://supabase.com/docs/guides/storage/buckets/creating-buckets), [Deepgram formats](https://developers.deepgram.com/docs/supported-audio-formats).
-- [ ] Do not manually invent database tables. The agent will create checked-in migrations and RLS policies from [Architecture](architecture.md).
+- [ ] **Zero storage policies exist.** Add ownership-based upload/read policies in checked-in migrations with the schema. Do not invent ad-hoc tables in the dashboard.
+- [ ] Do not manually invent database tables. The identity-lane scaffold creates checked-in migrations and RLS from [Architecture](architecture.md).
 
 ### 2. GitHub login through Supabase
 
-- [ ] Open [GitHub OAuth Apps](https://github.com/settings/developers), then **New OAuth App**. Name it **Shiproom Login**; Homepage URL can be `http://localhost:3000` for this development app.
-- [ ] Set **Authorization callback URL** to the callback shown by Supabase's GitHub provider, normally `https://<project-ref>.supabase.co/auth/v1/callback`. This is different from the Next.js `/auth/callback` path.
-- [ ] Generate the OAuth client secret. In Supabase **Authentication → Sign In / Providers → GitHub**, enable GitHub and enter this client ID and secret; save. These credentials belong in Supabase, not the Next.js environment file.
+- [x] GitHub OAuth App **Shiproom Login** (id `3940221`, owner WeebPapi). Homepage URL `http://localhost:3000`.
+- [x] Authorization callback URL is hosted Supabase auth: `https://fnrdatkgwdtsqmvstrlp.supabase.co/auth/v1/callback`. This is different from the Next.js `/auth/callback` path.
+- [x] GitHub provider enabled in Supabase **Authentication → Sign In / Providers → GitHub** with that app's client ID and secret. Those credentials belong in Supabase, not `.env.local`.
 - [ ] Keep GitHub email privacy in mind: the app must handle a missing email. Test sign-in once the skeleton implements the PKCE callback. [Official setup](https://supabase.com/docs/guides/auth/social-login/auth-github).
 
 ### 3. Dedicated Linear workspace
@@ -95,25 +109,51 @@ Do not commit filled env files, Vercel link state, real recordings/transcripts, 
 
 ## Prompt for the skeleton agent
 
+Paste the following. Do not expand into media, extraction, or issue publication in the same change.
+
 ```text
-Read AGENTS.md, README.md, docs/product.md, docs/architecture.md,
-docs/setup.md, docs/development.md, docs/delivery.md, and docs/decisions.md.
-Build the smallest sound Next.js App Router + TypeScript skeleton in this
-existing repository. Use npm and Node 24, Supabase SSR GitHub authentication,
-explicit authorized team membership, and an accessible Linear-inspired shell
-for the calendar, team/context selection, meeting, and participant inbox.
-Implement the identity lane and shared contracts needed by the other lanes.
-Keep provider secrets server-only, preserve the ignored .env.local without
-printing it, and use the existing Vercel project. Do not overwrite these docs
-or create another repository. Use the reserved callback paths. Validate input
-and authorization; don't return fake successful integration results.
-Daily + integrated Deepgram is the live path, direct Deepgram the upload path,
-OpenAI Responses strict JSON the extraction path, and Inngest durable execution.
-The dedicated Linear workspace is Shiproom; never use ARCI projects.
-Do not implement all four lanes in the skeleton. Add only the shared pieces
-and working identity flow, with clear states for integrations still pending.
-Update .env.example and relevant docs in the same change. Replace proposed
-commands with tested actual commands and run meaningful build/type checks
-and focused checks for authorization. Record implemented versus verified
-behavior honestly, with remaining setup and handoff details for all four devs.
+Read AGENTS.md, README.md, docs/product.md, docs/architecture.md
+(especially Remaining implementation constraints and reserved callback
+paths), docs/setup.md (Agent-visible status first), docs/development.md,
+docs/delivery.md, docs/decisions.md, and docs/integrations.md.
+
+This is the identity-lane skeleton only (delivery lane A). Do not build
+Daily calling, Deepgram upload, OpenAI extraction, Inngest publication,
+or GitHub writes. Do not deploy. Do not register webhooks. Do not use
+or modify the ARCI Linear workspace.
+
+Build the smallest sound Next.js App Router + TypeScript app in this
+existing public repo (WeebPapi/shiproom, master). Use npm. Pin Node 24
+to match the existing Vercel project prj_qQNcfxoVxlZPMtqLYmYoSih9ibRf
+(weebpapis-projects/shiproom). Local Node may still be 22.x; do not
+create a second Vercel project.
+
+Reuse provisioned resources from docs/setup.md:
+- Supabase shiproom-dev, ref fnrdatkgwdtsqmvstrlp, Tokyo ap-northeast-1
+- GitHub login OAuth App "Shiproom Login" already enabled in Supabase
+- bucket shiproom-audio (private, 25 MB, MIME allowlist; no policies yet)
+- reserved paths /auth/callback,
+  /api/integrations/linear/callback, /api/webhooks/daily,
+  /api/webhooks/deepgram, /api/inngest
+- public-repo fallback WeebPapi/shiproom until a GitHub App exists
+
+Implement: Supabase SSR GitHub authentication (PKCE), explicit
+authorized team membership (not "logged in with GitHub" = member),
+checked-in SQL migrations + RLS from the architecture minimum
+persisted model, ownership policies on shiproom-audio, and an
+accessible Linear-inspired shell for team home/calendar, context
+selection, meeting placeholder, and participant inbox. Shared
+validation schemas in one contracts module. Server-only secrets.
+
+Missing env (service_role, Linear/Daily/Deepgram/OpenAI/Inngest keys)
+must produce honest disconnected/not-configured UI, never fake
+success. Linear OAuth: request read,issues:create against the
+reserved callback; destination workspace is Shiproom / SHIP /
+Shiproom Demo once that workspace exists. Handle missing GitHub
+email. Preserve ignored .env.local; never print secrets.
+
+Ponytail full mode. Smallest complete change. Update .env.example
+and relevant docs in the same change. Replace proposed commands
+with tested actual commands. Run build/typecheck and a focused
+authorization check. Record implemented vs verified honestly.
 ```

@@ -24,6 +24,19 @@ These paths are reserved for provider configuration; no route exists yet. Regist
 
 See [Setup](setup.md) for local and deployed registration order. Endpoints must reject invalid input/authorization; do not implement placeholder successful webhook responses.
 
+## Remaining implementation constraints
+
+Binding for the first scaffold and later lanes. Provisioning facts live in [Setup](setup.md); do not treat that checklist as implemented product behavior.
+
+- **No schema yet.** There are no tables, RLS policies, or storage policies. Identity lane writes checked-in migrations from the model below. Do not invent dashboard tables or grant blanket authenticated storage access. Bucket `shiproom-audio` exists with size/MIME limits only.
+- **Reserved routes must fail closed.** Implement the callback paths as real handlers that reject invalid input and unauthorized callers. Do not register Daily, Deepgram, or Inngest webhooks, and do not acknowledge provider events as success, until signature verification exists on an HTTPS origin.
+- **GitHub login ≠ repository access.** Login OAuth is already configured in Supabase. `GITHUB_APP_*` is unset; the documented demo fallback is public `WeebPapi/shiproom`. Do not request the broad `repo` scope.
+- **Linear destination is not ARCI.** App OAuth (`read,issues:create`) and the dedicated **Shiproom** workspace do not exist yet. The connected Linear MCP/workspace is ARCI and must not be used for issues, teams, or projects.
+- **Uniqueness is not write-safety.** A database unique constraint does not make Linear issue creation idempotent. Persist UUID v4 issue IDs before the external write; reconcile on retry. See [External-write safety](#external-write-safety).
+- **Service role bypasses RLS.** Every team, meeting, context, upload, and notification operation still needs an explicit server-side authorization check. Browser code never receives provider API keys or `service_role`.
+- **Do not deploy docs-only.** Use the existing Vercel project after the scaffold is buildable. Do not create a second Vercel or Supabase project. Region is already Tokyo; do not recreate the project to chase Frankfurt.
+- **Live/upload/extraction/Inngest are later lanes.** The skeleton owns identity, membership, shared contracts, and honest pending states. Media, transcription, extraction, and issue publication are out of skeleton scope.
+
 ## Suggested code layout
 
 Create only the directories used by the first slice:

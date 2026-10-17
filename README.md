@@ -6,7 +6,7 @@ Browser-based meetings that turn developer conversations into project work.
 
 Shiproom brings a simple, Linear-inspired meeting experience together with Linear project context and GitHub repository context. Teams schedule a planning call or start a huddle, talk normally, and receive links to automatically created `[shiproom]` Linear issues. Each issue explains the agreed work and cites the conversation behind it.
 
-**Status: specification and setup preparation.** This repository contains documentation, a starter icon, and an environment template. The Vercel project is created and linked locally, with Next.js selected. There is no application, install command, deployed demo, or working integration yet. Requirements below describe the intended product; they are not claims of implemented behavior.
+**Status: specification plus partial provider setup; no application scaffold.** This repository contains documentation, a starter icon, and an environment template. Vercel and Supabase projects exist; GitHub login OAuth and the private audio bucket are configured. There is no `package.json`, install command, deployed demo, schema, or working integration yet. Remaining setup and architecture constraints are in [Setup](docs/setup.md) and [Architecture](docs/architecture.md). Requirements below describe the intended product; they are not claims of implemented behavior.
 
 ## Start here
 

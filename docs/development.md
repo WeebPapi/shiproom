@@ -32,7 +32,7 @@ Names below are proposed, not consumed by current code. The scaffold owner must 
 
 Verify the intended hosting plan's request durations, upload limits, scheduled jobs, and billing allowances. Register HTTPS OAuth/webhook endpoints for deployment and a supported local tunnel if needed. Never paste tokens into docs, tickets, example URLs, fixtures, terminal recordings, or screenshots. Product setup UI should ask for authorization through OAuth rather than displaying environment variable names to end users.
 
-The Vercel project is created and linked locally. Other provider resources, credentials, and billing configuration need the user's manual checklist; [Setup](setup.md) records the precise boundary. No application integration has been exercised.
+The Vercel project is created and linked locally. Supabase, GitHub login, and the audio bucket are configured as recorded in [Setup](setup.md); Linear, Daily, Deepgram, Inngest, OpenAI, and `service_role` credentials are still missing. No application integration has been exercised. Do not invent `npm` scripts until the scaffold exists.
 
 ## Contribution workflow
 

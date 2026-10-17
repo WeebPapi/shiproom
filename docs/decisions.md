@@ -37,7 +37,7 @@ These are scoped implementation recommendations, chosen to make the request conc
 ## Implementation ledger
 
 - Documentation foundation: written and validated; published in the public [WeebPapi/shiproom repository](https://github.com/WeebPapi/shiproom) on `master`.
-- Setup preparation: [manual checklist and skeleton handoff](setup.md), `.env.example`, and secret/build ignore rules written. Vercel `weebpapis-projects/shiproom` created, linked locally, and verified as Next.js / Node 24.x. No Git auto-deployment connection or app deployment yet. Other provider setup requires the manual steps; ARCI has not been modified.
+- Setup preparation: [manual checklist and skeleton handoff](setup.md), `.env.example`, and secret/build ignore rules written. Vercel `weebpapis-projects/shiproom` created, linked locally, and verified as Next.js / Node 24.x. No Git auto-deployment connection or app deployment yet. Supabase `shiproom-dev` (`fnrdatkgwdtsqmvstrlp`, Tokyo), GitHub login OAuth, and private `shiproom-audio` bucket settings are configured; Linear/Daily/Deepgram/Inngest/OpenAI keys and the app scaffold are not. ARCI has not been modified.
 - App scaffold / local commands: not started.
 - Auth, team membership, invitations: not started.
 - Linear OAuth/context and GitHub repository connection: not started.
@@ -52,11 +52,22 @@ Mark an item implemented when code exists; mark it verified only with a check re
 
 ## Prerequisites still open
 
-Assign the four developer lane owners and H0 start time. Follow [Setup](setup.md) to create the dedicated Linear workspace/projects, configure provider accounts/credentials privately, verify Daily paid transcription/webhook access, authorize an allowlisted GitHub repository, confirm OpenAI model access, and establish the deployment URL. These block claims of a working app; they do not block starting the skeleton.
+Assign the four developer lane owners and H0 start time. These block claims of a working app; they do not block starting the identity-lane skeleton. Live status: [Setup](setup.md#agent-visible-status). Architecture constraints the scaffold must honor: [Architecture](architecture.md#remaining-implementation-constraints).
+
+Still required before claiming integrations:
+
+- Put `SUPABASE_SERVICE_ROLE_KEY` and `OPENAI_API_KEY` in ignored `.env.local` (user has an OpenAI key). Do not paste them into chat.
+- Create dedicated Linear workspace **Shiproom** (team **SHIP**, projects **Shiproom MVP** / **Shiproom Demo**) and the OAuth app. Do not use ARCI.
+- Sign into Daily, Deepgram, and Inngest; copy keys locally. Confirm Daily paid transcription/webhook eligibility. Do not register webhook URLs yet.
+- Private GitHub App remains optional; public `WeebPapi/shiproom` is the documented fallback.
+- Confirm OpenAI `gpt-5-mini` Structured Outputs access with a synthetic fixture after the extraction lane exists.
+- Establish a deployment URL only after the scaffold is buildable; do not deploy docs-only.
 
 If billing or setup blocks a provider, use the relevant documented fallback and record the change. Unfinished self-service onboarding must be disclosed if the demo relies on a preconfigured team. Do not cut authorization, evidence, or duplicate safety to claim the full scope is complete.
 
 ## Change and verification log
+
+- **2026-10-17 — dashboard setup recorded, skeleton unblocked:** GitHub login OAuth App **Shiproom Login** (`3940221`) is enabled in Supabase; Auth redirects include `http://localhost:3000/auth/callback`; `shiproom-audio` is private with 25 MB and the documented MIME allowlist (still zero storage policies). Public Supabase URL and publishable key are in ignored `.env.local`; `service_role` and remaining provider keys are not. Project region is Tokyo, not Frankfurt. Linear/Daily/Deepgram/Inngest remain behind login. Remaining implementation constraints were added to [Architecture](architecture.md); [Setup](setup.md) now has an agent-visible status table. No app scaffold, deploy, webhook registration, or schema.
 
 - **2026-10-17 — Supabase OAuth verified:** completed authorization using the signed-in preview browser. `codex mcp login supabase` exited successfully and the CLI reports `auth_status: o_auth`. The existing session has no Supabase tools loaded and its resource lookup reports an unknown server; a session reload and actual read-only project query remain necessary. No database/schema changes or application integration were performed.
 
