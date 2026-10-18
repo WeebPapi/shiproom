@@ -1,5 +1,5 @@
 import { afterEach, expect, it, vi } from "vitest";
-import { ensurePrivateRoom, getExistingRoom } from "./daily";
+import { ensurePrivateRoom, fetchStoredTranscript, getExistingRoom } from "./daily";
 
 vi.mock("server-only", () => ({}));
 vi.mock("./config", () => ({ serverConfig: { dailyApiKey: () => "test-key" } }));
@@ -39,4 +39,25 @@ it("updates an existing room with Georgian Nova-3, separate keyterms, and stream
   }));
   expect(await ensurePrivateRoom("test", "ka", ["example/project", "GITHUB"])).toMatchObject({ transcription: "daily" });
   expect(update).toHaveBeenCalledOnce();
+});
+
+it("downloads this room's finished Daily transcript when the list omits isVttAvailable", async () => {
+  const vtt = "WEBVTT\n\n00:00:01.000 --> 00:00:02.000\nშევთანხმდით.\n";
+  vi.stubGlobal("fetch", vi.fn(async (url: string) => {
+    const path = String(url);
+    if (path.includes("/transcription/stop")) return new Response("{}", { status: 200 });
+    if (path.endsWith("/rooms/srroom")) return Response.json({ id: "room-1", name: "srroom", url: "https://example.daily.co/srroom" });
+    if (path.includes("/transcript/mine/access-link")) return Response.json({ download_link: "https://files.example/mine.vtt" });
+    if (path.includes("/transcript?")) {
+      return Response.json({
+        data: [
+          { transcriptId: "other", status: "t_finished", isVttAvailable: true, roomId: "room-other" },
+          { transcriptId: "mine", status: "t_finished", roomId: "room-1" },
+        ],
+      });
+    }
+    if (path === "https://files.example/mine.vtt") return new Response(vtt);
+    return Response.json({ error: path }, { status: 500 });
+  }));
+  expect(await fetchStoredTranscript("srroom")).toEqual({ id: "mine", vtt });
 });

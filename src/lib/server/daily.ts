@@ -114,24 +114,33 @@ export async function stopRoomTranscription(roomName: string): Promise<void> {
   await daily(`/rooms/${encodeURIComponent(roomName)}/transcription/stop`, { method: "POST", body: "{}" }).catch(() => undefined);
 }
 
-type TranscriptRow = { transcriptId?: string; status?: string; isVttAvailable?: boolean };
+type TranscriptRow = { transcriptId?: string; status?: string; isVttAvailable?: boolean; roomId?: string };
+
+async function roomIdFor(name: string): Promise<string | null> {
+  const response = await daily(`/rooms/${encodeURIComponent(name)}`);
+  if (!response.ok) return null;
+  const body = (await response.json()) as { id?: unknown };
+  return typeof body.id === "string" ? body.id : null;
+}
 
 /** Polls Daily for a finished stored transcript. Does not claim success when the file is missing. */
 export async function fetchStoredTranscript(roomName: string): Promise<{ id: string; vtt: string } | { empty: true } | { error: string }> {
   await stopRoomTranscription(roomName);
+  const roomId = await roomIdFor(roomName);
+  const query = roomId ? `roomId=${encodeURIComponent(roomId)}` : `room_name=${encodeURIComponent(roomName)}`;
   for (let attempt = 0; attempt < 5; attempt += 1) {
     if (attempt > 0) await new Promise((resolve) => setTimeout(resolve, 3_000));
-    const list = await daily(`/transcript?room_name=${encodeURIComponent(roomName)}&limit=10`);
+    const list = await daily(`/transcript?${query}&limit=10`);
     if (!list.ok) {
       const message = await errorText(list);
       if (list.status === 404 || /not enabled|payment|forbidden|transcription/i.test(message)) return { empty: true };
       return { error: message };
     }
     const body = (await list.json()) as { data?: TranscriptRow[] };
-    const rows = body.data ?? [];
-    const ready = rows.find((row) => row.status === "t_finished" && row.isVttAvailable && row.transcriptId);
+    const rows = (body.data ?? []).filter((row) => !roomId || typeof row.roomId !== "string" || row.roomId === roomId);
+    // Daily's documented t_finished list example omits isVttAvailable; only skip when it is explicitly false.
+    const ready = rows.find((row) => row.status === "t_finished" && row.isVttAvailable !== false && row.transcriptId);
     if (!ready?.transcriptId) {
-      if (rows.some((row) => row.status === "t_in_progress")) continue;
       if (attempt === 4) return { empty: true };
       continue;
     }
