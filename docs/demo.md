@@ -69,7 +69,7 @@ Production build and whitespace checks also passed. The final browser automation
 | 18–24s | Click **End and create tasks**. “Shiproom turns our agreed work into Linear issues.” |
 | 24–30s | Show the Georgian transcript, then open a returned Linear issue. “Each task includes the original conversation as evidence.” |
 
-The full fixed 30-second dialogue, summary, and tasks live in [`src/lib/demo.ts`](../src/lib/demo.ts). Invented speakers Nino and Luka agree a loading indicator with disabled selection while loading, plus an empty state directing the owner to Connections. Search is explicitly deferred. Exactly these two issues are generated:
+The full fixed 30-second dialogue, summary, and tasks live in [`src/lib/demo.ts`](../src/lib/demo.ts). Scripted speakers Aleksandre (ალექსანდრე, turns 1 and 3) and Nika (ნიკა, turns 2 and 4) agree a loading indicator with disabled selection while loading, plus an empty state directing the owner to Connections. Names are fixed demo labels, not verified speaker identities. Start a new take to persist these labels; existing saved transcripts are not rewritten. Search is explicitly deferred. Exactly these two issues are generated:
 
 - `[shiproom] Add repository picker loading state`
 - `[shiproom] Add repository picker empty state`

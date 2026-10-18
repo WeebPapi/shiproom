@@ -3,10 +3,10 @@ import { extractionResultSchema, transcriptSchema } from "./contracts";
 export const DEMO_NOTE = "Scripted demo: synthetic Georgian transcript and fixed tasks. Spoken audio was not transcribed or analyzed. Linear issues are real.";
 
 export const DEMO_SEGMENTS = [
-  { id: "seg-0001", startMs: 0, endMs: 6000, speakerUserId: null, speakerLabel: "ნინო", text: "Shiproom-ის რეპოზიტორიის არჩევა გავაუმჯობესოთ. სანამ სია იტვირთება, ჩატვირთვის ინდიკატორი ვაჩვენოთ." },
-  { id: "seg-0002", startMs: 6000, endMs: 13000, speakerUserId: null, speakerLabel: "ლუკა", text: "შევთანხმდით. ჩატვირთვისას არჩევა გამორთული იყოს, სიის მიღების შემდეგ კი ჩაირთოს." },
-  { id: "seg-0003", startMs: 13000, endMs: 21000, speakerUserId: null, speakerLabel: "ნინო", text: "თუ რეპოზიტორიები არ არის, ცარიელი მდგომარეობა ვაჩვენოთ და დავწეროთ, რომ მფლობელმა Connections გვერდიდან დაამატოს რეპოზიტორია." },
-  { id: "seg-0004", startMs: 21000, endMs: 30000, speakerUserId: null, speakerLabel: "ლუკა", text: "დიახ, ორივე დავალება Shiproom-ის პროექტში შევქმნათ. ძებნა ახლა არ დავამატოთ, მოგვიანებით განვიხილოთ." },
+  { id: "seg-0001", startMs: 0, endMs: 6000, speakerUserId: null, speakerLabel: "ალექსანდრე", text: "Shiproom-ის რეპოზიტორიის არჩევა გავაუმჯობესოთ. სანამ სია იტვირთება, ჩატვირთვის ინდიკატორი ვაჩვენოთ." },
+  { id: "seg-0002", startMs: 6000, endMs: 13000, speakerUserId: null, speakerLabel: "ნიკა", text: "შევთანხმდით. ჩატვირთვისას არჩევა გამორთული იყოს, სიის მიღების შემდეგ კი ჩაირთოს." },
+  { id: "seg-0003", startMs: 13000, endMs: 21000, speakerUserId: null, speakerLabel: "ალექსანდრე", text: "თუ რეპოზიტორიები არ არის, ცარიელი მდგომარეობა ვაჩვენოთ და დავწეროთ, რომ მფლობელმა Connections გვერდიდან დაამატოს რეპოზიტორია." },
+  { id: "seg-0004", startMs: 21000, endMs: 30000, speakerUserId: null, speakerLabel: "ნიკა", text: "დიახ, ორივე დავალება Shiproom-ის პროექტში შევქმნათ. ძებნა ახლა არ დავამატოთ, მოგვიანებით განვიხილოთ." },
 ];
 
 export const DEMO_EXTRACTION = extractionResultSchema.parse({
