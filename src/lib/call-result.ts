@@ -120,11 +120,19 @@ export function isTranscript(value: Transcript | { error: string }): value is Tr
   return !("error" in value);
 }
 
+export type CursorWork = {
+  issueId: string;
+  phase: "assigned" | "building" | "needs_input" | "error" | "ready";
+  label: string;
+  href: string | null;
+};
+
 export function issueDescription(input: {
   meetingId: string;
   meetingUrl: string;
   ordinal: number;
   sourceNote: string;
+  cursorRepo?: string | null;
   task: { description: string; acceptanceCriteria: string[]; evidenceSegmentIds: string[]; sourceReferences?: { url: string }[] };
   transcript: Transcript;
 }): string {
@@ -142,6 +150,7 @@ export function issueDescription(input: {
     `Evidence:\n${evidence.map((line) => `- ${line}`).join("\n")}`,
     ...(input.task.sourceReferences ?? []).map((source) => `Source: ${source.url}`),
     `Meeting: ${input.meetingUrl}`,
+    input.cursorRepo ? `Open a draft PR in this repository.\n[repo=${input.cursorRepo}]` : null,
     input.sourceNote,
     taskMarker(input.meetingId, input.ordinal),
   ]

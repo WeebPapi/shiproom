@@ -37,13 +37,16 @@ describe("Daily transcript and Linear destination", () => {
     });
     expect(isTranscript(transcript)).toBe(true);
     if (!isTranscript(transcript)) return;
-    expect(issueDescription({
+    const description = issueDescription({
       meetingId,
       meetingUrl: "http://localhost:3000/teams/t/meetings/m",
       ordinal: 1,
       sourceNote: "Transcript source: Daily stored transcript.",
       task: { description: "Add the empty state.", acceptanceCriteria: ["The picker shows it."], evidenceSegmentIds: ["seg-0001"] },
       transcript,
-    })).toContain("shiproom-task:11111111-1111-4111-8111-111111111111:1");
+      cursorRepo: "WeebPapi/acme-repo-picker",
+    });
+    expect(description).toContain("shiproom-task:11111111-1111-4111-8111-111111111111:1");
+    expect(description).toContain("[repo=WeebPapi/acme-repo-picker]");
   });
 });

@@ -1,5 +1,5 @@
 import { afterEach, expect, it, vi } from "vitest";
-import { createLinearIssue, updateLinearIssue } from "./linear";
+import { createLinearIssue, fetchCursorWork, findCursorDelegate, updateLinearIssue } from "./linear";
 
 vi.mock("server-only", () => ({}));
 afterEach(() => vi.unstubAllGlobals());
@@ -65,4 +65,53 @@ it.each(["success", "timeout", "stale", "moved", "unavailable"])("amends only th
     expect((await updateLinearIssue("personal-key", action)).ok).toBe(true);
     expect(mutation).toHaveBeenCalledOnce();
   }
+});
+
+it("finds the Cursor app user and omits delegation when none exists", async () => {
+  vi.stubGlobal("fetch", vi.fn(async () => Response.json({ data: { users: { nodes: [{ id: "cursor-user" }] } } })));
+  expect(await findCursorDelegate("personal-key")).toBe("cursor-user");
+  vi.stubGlobal("fetch", vi.fn(async () => Response.json({ data: { users: { nodes: [] } } })));
+  expect(await findCursorDelegate("personal-key")).toBeNull();
+});
+
+it("delegates issue creation to Cursor when an app user id is supplied", async () => {
+  vi.stubGlobal("fetch", vi.fn(async (_url, request) => {
+    const sent = JSON.parse(request.body).variables.input;
+    expect(sent.delegateId).toBe("cursor-user");
+    return Response.json({ data: { issueCreate: { success: true, issue: { ...issue, description: sent.description } } } });
+  }));
+  expect((await createLinearIssue("personal-key", { ...input, delegateId: "cursor-user" })).ok).toBe(true);
+});
+
+it.each([
+  {
+    name: "assigned",
+    nodes: [{ id: "1", delegate: { name: "Cursor" }, agentSessions: { nodes: [] }, attachments: { nodes: [] } }],
+    phase: "assigned",
+    href: null,
+  },
+  {
+    name: "building",
+    nodes: [{ id: "1", delegate: { name: "Cursor" }, agentSessions: { nodes: [{ status: "active", url: "https://linear.app/session", pullRequests: { nodes: [] } }] }, attachments: { nodes: [] } }],
+    phase: "building",
+    href: "https://linear.app/session",
+  },
+  {
+    name: "draft PR",
+    nodes: [{ id: "1", delegate: { name: "Cursor" }, agentSessions: { nodes: [{ status: "complete", url: null, pullRequests: { nodes: [{ pullRequest: { url: "https://github.com/WeebPapi/acme-repo-picker/pull/4", number: 4, status: "draft" } }] } }] }, attachments: { nodes: [] } }],
+    phase: "ready",
+    href: "https://github.com/WeebPapi/acme-repo-picker/pull/4",
+    label: "Draft #4",
+  },
+])("maps Linear Cursor $name onto the meeting badge", async ({ nodes, phase, href, label }) => {
+  vi.stubGlobal("fetch", vi.fn(async () => Response.json({ data: { issues: { nodes } } })));
+  const work = await fetchCursorWork("personal-key", ["1"]);
+  expect(work["1"]).toMatchObject({ phase, href, ...(label ? { label } : {}) });
+});
+
+it("does not query Linear for Cursor work without issue ids", async () => {
+  const fetchMock = vi.fn();
+  vi.stubGlobal("fetch", fetchMock);
+  expect(await fetchCursorWork("personal-key", [])).toEqual({});
+  expect(fetchMock).not.toHaveBeenCalled();
 });

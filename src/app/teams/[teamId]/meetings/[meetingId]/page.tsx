@@ -7,14 +7,16 @@ import { Avatar, PageHeader, SectionTitle } from "@/components/page-parts";
 import { badgeClass, cardClass } from "@/components/styles";
 import { requireMembership } from "@/lib/server/auth";
 import { serverConfig } from "@/lib/server/config";
-import { getLinearOptions, listTeamRepositories, type LinearOptionsState } from "@/lib/server/connections";
+import { getLinearAuthorization, getLinearOptions, listTeamRepositories, type LinearOptionsState } from "@/lib/server/connections";
+import { fetchCursorWork } from "@/lib/server/linear";
 import { STATUS_LABEL } from "@/lib/server/meetings";
 import { createClient } from "@/lib/supabase/server";
+import type { CursorWork } from "@/lib/call-result";
 import { formatInZone } from "@/lib/time";
 import type { CaptureStatus, ProcessingStatus, ExtractionResult, Transcript } from "@/lib/contracts";
 import { DEMO_NOTE, DEMO_SEGMENTS } from "@/lib/demo";
 import { CallPanel } from "./call-panel";
-import { MockPrBuild, MockPrStatus } from "./mock-prs";
+import { CursorWorkBadge, CursorWorkPoll } from "./cursor-work";
 
 type MeetingRow = {
   id: string;
@@ -40,7 +42,7 @@ type MeetingRow = {
   is_demo: boolean;
 };
 
-type TaskRow = { id: string; ordinal: number; payload: Partial<ExtractionResult["tasks"][number]>; publication_status: string; linear_issue_url: string | null; linear_issue_identifier: string | null };
+type TaskRow = { id: string; ordinal: number; payload: Partial<ExtractionResult["tasks"][number]>; publication_status: string; linear_issue_url: string | null; linear_issue_identifier: string | null; linear_issue_uuid: string };
 
 export default async function MeetingPage({ params }: { params: Promise<{ teamId: string; meetingId: string }> }) {
   const { teamId, meetingId } = await params;
@@ -64,7 +66,7 @@ export default async function MeetingPage({ params }: { params: Promise<{ teamId
     supabase.from("meeting_invitees").select("user_id, profile:profiles(display_name, github_login)").eq("meeting_id", meetingId),
     supabase
       .from("tasks")
-      .select("id, ordinal, payload, publication_status, linear_issue_url, linear_issue_identifier")
+      .select("id, ordinal, payload, publication_status, linear_issue_url, linear_issue_identifier, linear_issue_uuid")
       .eq("meeting_id", meetingId)
       .order("ordinal")
       .returns<TaskRow[]>(),
@@ -74,6 +76,16 @@ export default async function MeetingPage({ params }: { params: Promise<{ teamId
 
   const repo = repositories.find((r) => r.id === meeting.github_repository_id);
   const kindLabel = meeting.kind === "scheduled" ? "Scheduled call" : meeting.kind === "huddle" ? "Huddle" : "Uploaded audio";
+  const publishedIds = (tasks.data ?? []).filter((task) => task.linear_issue_url).map((task) => task.linear_issue_uuid);
+  let cursorWork: Record<string, CursorWork> = {};
+  try {
+    const authorization = publishedIds.length > 0 ? await getLinearAuthorization(teamId) : null;
+    if (authorization) cursorWork = await fetchCursorWork(authorization, publishedIds);
+  } catch {
+    cursorWork = {};
+  }
+  // shortcut: completed meetings without a PR URL keep polling Linear every 10s while open, including seeded history that never ran Cursor.
+  const cursorPending = meeting.processing_status === "complete" && publishedIds.some((id) => !cursorWork[id]?.href);
 
   return (
     <>
@@ -156,13 +168,14 @@ export default async function MeetingPage({ params }: { params: Promise<{ teamId
               </div>
             )}
             {(tasks.data ?? []).length > 0 ? (
-              <MockPrBuild enabled={meeting.processing_status === "complete" && (tasks.data ?? []).some((task) => task.linear_issue_url)}>
+              <>
+              <CursorWorkPoll pending={cursorPending} />
               <ul className={`${cardClass} divide-y divide-border`}>
                 {(tasks.data ?? []).map((task) => (
                   <li key={task.id} className="px-4 py-3">
                     <div className="flex min-h-7 items-center gap-3">
                       <span className="min-w-0 flex-1 font-medium">{task.payload.title ?? `Task ${task.ordinal}`}</span>
-                      {task.linear_issue_url && <MockPrStatus ordinal={task.ordinal} />}
+                      <CursorWorkBadge work={cursorWork[task.linear_issue_uuid]} />
                       {task.linear_issue_url && <span className={badgeClass}>{task.payload.existingLinearIssueId ? "Updated" : "Created"}</span>}
                     {task.linear_issue_url ? (
                       <a
@@ -205,7 +218,7 @@ export default async function MeetingPage({ params }: { params: Promise<{ teamId
                   </li>
                 ))}
               </ul>
-              </MockPrBuild>
+              </>
             ) : (
               <p className="rounded-lg border border-dashed border-border px-4 py-6 text-center text-muted">No tasks yet.</p>
             )}

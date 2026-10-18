@@ -14,9 +14,9 @@ Browser checks confirmed an inbox recap for a zero-task synthetic meeting, Engli
 
 `node --env-file=.env.local scripts/seed-demo.mjs` adds three completed meetings to the demo app team so Home shows result cards: *Sprint planning: inbox notifications* (SHI-2, SHI-3), *Bug triage: Georgian transcript display* (SHI-4 to SHI-6), and *Design review: audio upload flow* (SHI-7, SHI-8). Each has a synthetic Georgian transcript with three fictional speakers, English notes, and real issues in the Shiproom Demo project, plus unread inbox notifications for the team owner. They were written by hand, not produced by a call or Claude; each Linear issue says so. Use them to show history and results, not as live-capture evidence. Rerunning the script updates the same rows and issues.
 
-## Mocked "Build into PRs"
+## Cursor draft PRs
 
-A completed meeting with published issues shows **Build into PRs** above its task list. It is a client-side visual mock for the recording: each published task shows *Building PR…*, then after about 3–5 seconds (staggered) a PR icon and a made-up number (`#40 + task ordinal`). Nothing is generated, nothing is written to GitHub, the number is not a link, and the state resets on refresh. The button's tooltip says it is a demo mock. Say so in the video if it is shown.
+A newly created Linear issue is delegated to the Cursor agent in the connected workspace. Ordinary meetings tell Cursor `[repo=]` the selected GitHub repository. Scripted `/demo` meetings have no repo, so they use `CURSOR_PR_REPO` ([WeebPapi/acme-repo-picker](https://github.com/WeebPapi/acme-repo-picker)). The meeting result shows assigned/building/needs-input/error/PR from Linear agent sessions and GitHub attachments, and refreshes every ten seconds until a PR URL appears. This takes minutes, not seconds. Shiproom does not open the PR. Cursor must stay installed on the Linear team, Cloud Agents need GitHub access to that repo plus billing, and first use may ask someone to link Cursor↔Linear. Amendments to existing issues are not auto-delegated.
 
 ## Human live check
 
@@ -76,6 +76,6 @@ The full fixed 30-second dialogue, summary, and tasks live in [`src/lib/demo.ts`
 
 ### Repeat takes and failures
 
-Refresh preserves the demo mode, transcript, and issue links. The fixed transcript is shown above the notes; the regular stored-transcript section is hidden for demo meetings to avoid showing it twice. The mocked **Build into PRs** button also appears on a completed take. **Retry this take** resumes incomplete publication with saved task UUIDs; an already published task is reused. Failed transcript or task-identity persistence blocks the corresponding external writes. Use the same meeting URL to recover after a timeout. **New take** creates a separate meeting and, when ended, another pair of real issues; clean up unwanted rehearsal issues manually in Linear. Nothing is deleted automatically.
+Refresh preserves the demo mode, transcript, and issue links. The fixed transcript is shown above the notes; the regular stored-transcript section is hidden for demo meetings to avoid showing it twice. Live Cursor PR badges also appear on a completed take once Linear reports agent/PR state. **Retry this take** resumes incomplete publication with saved task UUIDs; an already published task is reused. Failed transcript or task-identity persistence blocks the corresponding external writes. Use the same meeting URL to recover after a timeout. **New take** creates a separate meeting and, when ended, another pair of real issues; clean up unwanted rehearsal issues manually in Linear. Nothing is deleted automatically.
 
 This shortcut does not add background jobs, context inference, or Georgian speech recognition. Normal meetings continue through the existing capture/extraction path. Live media, provider latency, and real Linear publication require a rehearsal in the configured app; mocked tests do not verify them.

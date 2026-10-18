@@ -16,7 +16,8 @@ import { getPublicEnv } from "@/lib/env";
 import { DEMO_EXTRACTION, DEMO_NOTE, demoTranscript } from "@/lib/demo";
 import { extractAgreedTasks } from "@/lib/server/claude";
 import { createRoomToken, ensurePrivateRoom, fetchStoredTranscript } from "@/lib/server/daily";
-import { createLinearIssue, fetchLinearIssues, updateLinearIssue } from "@/lib/server/linear";
+import { serverConfig } from "./config";
+import { createLinearIssue, fetchLinearIssues, findCursorDelegate, updateLinearIssue } from "./linear";
 import { getLinearAuthorization, getLinearOptions } from "@/lib/server/connections";
 import { fetchPublicRepositoryContext } from "@/lib/server/github";
 import { createAdminClient } from "@/lib/supabase/server";
@@ -179,9 +180,11 @@ async function publishTasks(input: {
   tasks: ExtractionResult["tasks"];
   destination: { teamId: string; projectId: string | null };
   note: string;
+  cursorRepo: string | null;
 }): Promise<{ tasks: CallTask[]; persistenceWarning: string | null }> {
   const results: CallTask[] = [];
   let persistenceWarning: string | null = null;
+  const delegateId = await findCursorDelegate(input.authorization);
   for (const [index, task] of input.tasks.entries()) {
     const ordinal = index + 1;
     const operation = task.existingLinearIssueId ? "updated" as const : "created" as const;
@@ -191,6 +194,7 @@ async function publishTasks(input: {
       meetingUrl: input.meetingUrl,
       ordinal,
       sourceNote: input.note,
+      cursorRepo: operation === "created" ? input.cursorRepo : null,
       task,
       transcript: input.transcript,
     });
@@ -216,7 +220,7 @@ async function publishTasks(input: {
       if (task.existingLinearIssueId) {
         created = await updateLinearIssue(input.authorization, { id: task.existingLinearIssueId, ...input.destination, updatedAt: task.existingLinearIssueUpdatedAt ?? "", amendment: `### Shiproom meeting update\n\n${description}` });
       } else {
-        created = await createLinearIssue(input.authorization, { id: String(existing.linear_issue_uuid), teamId: input.destination.teamId, projectId: input.destination.projectId, title, description });
+        created = await createLinearIssue(input.authorization, { id: String(existing.linear_issue_uuid), teamId: input.destination.teamId, projectId: input.destination.projectId, title, description, delegateId });
       }
     } catch {
       created = { ok: false, error: "Linear could not be reached. No new issue was confirmed." };
@@ -427,6 +431,7 @@ export async function finishMeetingCall(input: {
     tasks: extracted.result.tasks,
     destination: { teamId: destination.teamId, projectId: destination.projectId },
     note,
+    cursorRepo: repository?.full_name ?? serverConfig.cursorPrRepo(),
   });
   const failed = published.tasks.some((task) => task.error);
   const created = published.tasks.some((task) => task.url);

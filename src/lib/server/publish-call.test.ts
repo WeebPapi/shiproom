@@ -6,7 +6,7 @@ vi.mock("server-only", () => ({}));
 vi.mock("next/cache", () => ({ revalidatePath: vi.fn() }));
 vi.mock("@/lib/supabase/server", () => ({ createAdminClient: mocks.admin }));
 vi.mock("./connections", () => ({ getLinearOptions: mocks.options, getLinearAuthorization: mocks.authorization }));
-vi.mock("./config", () => ({ serverConfig: { anthropicApiKey: () => "ai-key", anthropicWorkspaceId: () => null, anthropicModel: () => "test-model" } }));
+vi.mock("./config", () => ({ serverConfig: { anthropicApiKey: () => "ai-key", anthropicWorkspaceId: () => null, anthropicModel: () => "test-model", cursorPrRepo: () => "WeebPapi/acme-repo-picker" } }));
 vi.mock("@/lib/env", () => ({ getPublicEnv: () => ({ appUrl: "https://shiproom.example.com" }) }));
 vi.mock("./daily", () => ({ fetchStoredTranscript: mocks.stored }));
 afterEach(() => vi.unstubAllGlobals());
@@ -88,6 +88,7 @@ it.each([{ saveFails: false, hasTasks: true, amend: false }, { saveFails: true, 
       return Response.json({ content: [{ type: "tool_use", name: "record_extraction", input: { summary: "Improve the picker.", decisions: [], openQuestions: [], tasks: hasTasks ? [{ title: "Add an empty state", description: "Add an empty state to the repository picker.", acceptanceCriteria: [], evidenceSegmentIds: ["seg-0001"], existingLinearIssueId: amend ? target.id : null }] : [] } }] });
     }
     expect(init.headers.Authorization).toBe("Bearer oauth-token");
+    if (body.query.includes("users(")) return Response.json({ data: { users: { nodes: [{ id: "cursor-user" }] } } });
     if (body.query.includes("orderBy: updatedAt")) return Response.json({ data: { issues: { nodes: amend ? [target] : [] } } });
     if (body.query.includes("issues(first")) return Response.json({ data: { issues: { nodes: [] } } });
     if (body.query.includes("issue(id:")) return Response.json({ data: { issue: target } });
@@ -103,6 +104,8 @@ it.each([{ saveFails: false, hasTasks: true, amend: false }, { saveFails: true, 
     const issue = body.variables.input;
     expect(issue.teamId).toBe("chosen-team");
     expect(issue.projectId).toBe("chosen-project");
+    expect(issue.delegateId).toBe("cursor-user");
+    expect(issue.description).toContain("[repo=example/demo]");
     expect(issue.description).toContain("Source: https://github.com/example/demo");
     expect(issue.description).toContain("Speaker 1): შევთანხმდით");
     expect(rows.tasks.some((row) => row.linear_issue_uuid === issue.id)).toBe(true);
@@ -152,10 +155,12 @@ it("publishes the fixed Georgian demo without capture or AI, and retries a faile
   rows.meetings[0] = { id: meetingId, team_id: teamId, language: "ka", github_repository_id: null, linear_team_id: null, linear_project_id: null };
   mocks.authorization.mockResolvedValue("personal-key");
   mocks.options.mockResolvedValue({ status: "ready", teams: [{ id: "shiproom-team", name: "Shiproom", key: "SHI", projects: [{ id: "demo-project", name: "Shiproom Demo" }] }] });
-  const created: { id: string; projectId: string; title: string; description: string }[] = [];
+  const created: { id: string; projectId: string; title: string; description: string; delegateId?: string }[] = [];
   vi.stubGlobal("fetch", vi.fn(async (url, init) => {
     expect(String(url)).toBe("https://api.linear.app/graphql");
-    const issue = JSON.parse(init.body).variables.input;
+    const body = JSON.parse(init.body);
+    if (body.query.includes("users(")) return Response.json({ data: { users: { nodes: [{ id: "cursor-user" }] } } });
+    const issue = body.variables.input;
     created.push(issue);
     if (created.length === 2) return Response.json({ data: { issueCreate: { success: false, issue: null } } });
     return Response.json({ data: { issueCreate: { success: true, issue: { ...issue, team: { id: issue.teamId }, project: { id: issue.projectId }, identifier: `SHI-${created.length}`, url: `https://linear.app/example/issue/SHI-${created.length}` } } } });
@@ -173,6 +178,8 @@ it("publishes the fixed Georgian demo without capture or AI, and retries a faile
   expect(created[2].id).toBe(created[1].id);
   expect(created.every((issue) => issue.projectId === "demo-project")).toBe(true);
   expect(created[0].description).toContain("Scripted demo");
+  expect(created[0].description).toContain("[repo=WeebPapi/acme-repo-picker]");
+  expect(created[0].delegateId).toBe("cursor-user");
   expect(created.map((issue) => issue.title)).toEqual([
     "[shiproom] Add repository picker loading state",
     "[shiproom] Add repository picker empty state",

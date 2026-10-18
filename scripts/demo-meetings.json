@@ -19,13 +19,13 @@
       ],
       "openQuestions": ["Will push notifications be needed later?"],
       "segments": [
-        { "id": "s1", "startMs": 0, "endMs": 9400, "speakerUserId": null, "speakerLabel": "ნინო", "text": "კარგი, დავიწყოთ. დღეს inbox-ის notification-ებზე უნდა შევთანხმდეთ, რას ვაკეთებთ ამ sprint-ში." },
+        { "id": "s1", "startMs": 0, "endMs": 9400, "speakerUserId": null, "speakerLabel": "ალექსანდრე", "text": "კარგი, დავიწყოთ. დღეს inbox-ის notification-ებზე უნდა შევთანხმდეთ, რას ვაკეთებთ ამ sprint-ში." },
         { "id": "s2", "startMs": 9800, "endMs": 21500, "speakerUserId": null, "speakerLabel": "გიორგი", "text": "ახლა მომხმარებელმა არ იცის, რამდენი წაუკითხავი შეტყობინება აქვს. Sidebar-ში Inbox-ის გვერდით unread badge უნდა გამოვაჩინოთ, რიცხვით." },
-        { "id": "s3", "startMs": 22000, "endMs": 33200, "speakerUserId": null, "speakerLabel": "ლუკა", "text": "Backend-ზე ეს მარტივია, notifications ცხრილში read_at null-ებს დავთვლით. ოღონდ ცხრაზე მეტი თუ იქნება, 9+ ვაჩვენოთ." },
-        { "id": "s4", "startMs": 33800, "endMs": 41000, "speakerUserId": null, "speakerLabel": "ნინო", "text": "შევთანხმდით. Badge-ს გიორგი გააკეთებს, ლუკა query-ში დაეხმარება." },
+        { "id": "s3", "startMs": 22000, "endMs": 33200, "speakerUserId": null, "speakerLabel": "ნიკა", "text": "Backend-ზე ეს მარტივია, notifications ცხრილში read_at null-ებს დავთვლით. ოღონდ ცხრაზე მეტი თუ იქნება, 9+ ვაჩვენოთ." },
+        { "id": "s4", "startMs": 33800, "endMs": 41000, "speakerUserId": null, "speakerLabel": "ალექსანდრე", "text": "შევთანხმდით. Badge-ს გიორგი გააკეთებს, ნიკა query-ში დაეხმარება." },
         { "id": "s5", "startMs": 41500, "endMs": 53900, "speakerUserId": null, "speakerLabel": "გიორგი", "text": "კიდევ ერთი: „ყველას წაკითხულად მონიშვნის“ ღილაკი გვჭირდება. ახლა თითო-თითოდ უნდა დააჭირო და ეს ძალიან მოსაწყენია." },
-        { "id": "s6", "startMs": 54300, "endMs": 63000, "speakerUserId": null, "speakerLabel": "ლუკა", "text": "ერთი server action-ით გავაკეთებ, მხოლოდ მიმდინარე მომხმარებლის შეტყობინებებზე. სხვის მონაცემებს არ შეეხება." },
-        { "id": "s7", "startMs": 63500, "endMs": 75800, "speakerUserId": null, "speakerLabel": "ნინო", "text": "Email notification-ებზეც იყო კითხვა. ჩემი აზრით, ამ ეტაპზე email-ს არ ვაგზავნით, მხოლოდ in-app. ამაზე თიქეთს არ ვქმნით." },
+        { "id": "s6", "startMs": 54300, "endMs": 63000, "speakerUserId": null, "speakerLabel": "ნიკა", "text": "ერთი server action-ით გავაკეთებ, მხოლოდ მიმდინარე მომხმარებლის შეტყობინებებზე. სხვის მონაცემებს არ შეეხება." },
+        { "id": "s7", "startMs": 63500, "endMs": 75800, "speakerUserId": null, "speakerLabel": "ალექსანდრე", "text": "Email notification-ებზეც იყო კითხვა. ჩემი აზრით, ამ ეტაპზე email-ს არ ვაგზავნით, მხოლოდ in-app. ამაზე თიქეთს არ ვქმნით." },
         { "id": "s8", "startMs": 76200, "endMs": 84000, "speakerUserId": null, "speakerLabel": "გიორგი", "text": "თანახმა ვარ. Push notification-ებზე მოგვიანებით ვისაუბროთ, ჯერ არ ვიცით, საჭიროა თუ არა." }
       ],
       "tasks": [
@@ -74,11 +74,11 @@
         { "id": "s1", "startMs": 0, "endMs": 11200, "speakerUserId": null, "speakerLabel": "თამარი", "text": "Georgian transcript-ის ჩვენებაზე რამდენიმე bug შევაგროვე. პირველი: გრძელი ქართული სიტყვები mobile-ზე ეკრანიდან გადადის." },
         { "id": "s2", "startMs": 11600, "endMs": 19800, "speakerUserId": null, "speakerLabel": "გიორგი", "text": "ვნახე, transcript-ის ბლოკზე overflow-wrap არ გვიწერია. მარტივად გასწორდება, დღესვე ავიღებ." },
         { "id": "s3", "startMs": 20300, "endMs": 30100, "speakerUserId": null, "speakerLabel": "თამარი", "text": "მეორე: speaker-ები ვიზუალურად ერთმანეთისგან არ განსხვავდება. როცა სამი ადამიანი ლაპარაკობს, მიყოლა ძნელია." },
-        { "id": "s4", "startMs": 30600, "endMs": 39400, "speakerUserId": null, "speakerLabel": "ნინო", "text": "მოდი, თითოეულ speaker-ს თავისი ფერი მივცეთ, avatar-ის მსგავსად. ფერი მთელი შეხვედრის განმავლობაში ერთი და იგივე უნდა იყოს." },
+        { "id": "s4", "startMs": 30600, "endMs": 39400, "speakerUserId": null, "speakerLabel": "ალექსანდრე", "text": "მოდი, თითოეულ speaker-ს თავისი ფერი მივცეთ, avatar-ის მსგავსად. ფერი მთელი შეხვედრის განმავლობაში ერთი და იგივე უნდა იყოს." },
         { "id": "s5", "startMs": 39900, "endMs": 47200, "speakerUserId": null, "speakerLabel": "გიორგი", "text": "კარგი, ოღონდ მხოლოდ ფერს არ დავეყრდნოთ, სახელიც დარჩეს, accessibility-სთვის." },
         { "id": "s6", "startMs": 47700, "endMs": 57500, "speakerUserId": null, "speakerLabel": "თამარი", "text": "მესამე: timestamp-ები წამებში ჩანს, ათწილადით. ასე წაკითხვა რთულია, წუთები და წამები ჯობია." },
-        { "id": "s7", "startMs": 58000, "endMs": 69300, "speakerUserId": null, "speakerLabel": "ლუკა", "text": "ფორმატი mm:ss-ზე გადავიყვანოთ, პატარა ცვლილებაა. Timestamp-ზე დაჭერით გადასვლა კი მოგვიანებით, audio playback ჯერ არ გვაქვს." },
-        { "id": "s8", "startMs": 69800, "endMs": 77000, "speakerUserId": null, "speakerLabel": "ნინო", "text": "შევთანხმდით: overflow, speaker-ების ფერები და mm:ss ფორმატი. Playback ამ sprint-ში არა." }
+        { "id": "s7", "startMs": 58000, "endMs": 69300, "speakerUserId": null, "speakerLabel": "ნიკა", "text": "ფორმატი mm:ss-ზე გადავიყვანოთ, პატარა ცვლილებაა. Timestamp-ზე დაჭერით გადასვლა კი მოგვიანებით, audio playback ჯერ არ გვაქვს." },
+        { "id": "s8", "startMs": 69800, "endMs": 77000, "speakerUserId": null, "speakerLabel": "ალექსანდრე", "text": "შევთანხმდით: overflow, speaker-ების ფერები და mm:ss ფორმატი. Playback ამ sprint-ში არა." }
       ],
       "tasks": [
         {
@@ -134,14 +134,14 @@
       ],
       "openQuestions": ["How long should uploaded audio be retained? Ask legal."],
       "segments": [
-        { "id": "s1", "startMs": 0, "endMs": 10300, "speakerUserId": null, "speakerLabel": "ნინო", "text": "დღეს upload-ის flow-ს განვიხილავთ. ზოგ გუნდს Zoom-ის ჩანაწერი აქვს და უნდა, რომ ატვირთოს." },
+        { "id": "s1", "startMs": 0, "endMs": 10300, "speakerUserId": null, "speakerLabel": "ალექსანდრე", "text": "დღეს upload-ის flow-ს განვიხილავთ. ზოგ გუნდს Zoom-ის ჩანაწერი აქვს და უნდა, რომ ატვირთოს." },
         { "id": "s2", "startMs": 10800, "endMs": 20500, "speakerUserId": null, "speakerLabel": "გიორგი", "text": "Design-ში drag and drop ზონაა. ფაილის ტიპებიდან mp3, m4a, wav და mp4 დავუშვათ." },
-        { "id": "s3", "startMs": 21000, "endMs": 31700, "speakerUserId": null, "speakerLabel": "ლუკა", "text": "ზომის ლიმიტი მჭირდება. მოდი 500 მეგაბაიტი იყოს. თუ მეტია, ატვირთვამდე ვუთხრათ მომხმარებელს." },
-        { "id": "s4", "startMs": 32200, "endMs": 39900, "speakerUserId": null, "speakerLabel": "ნინო", "text": "კარგი. ატვირთვისას progress bar უნდა ჩანდეს, თორემ ხალხი გვერდს დახურავს." },
-        { "id": "s5", "startMs": 40400, "endMs": 49800, "speakerUserId": null, "speakerLabel": "ლუკა", "text": "ფაილი პირდაპირ Supabase Storage-ში წავა signed URL-ით, ჩვენს server-ზე არ გაივლის." },
+        { "id": "s3", "startMs": 21000, "endMs": 31700, "speakerUserId": null, "speakerLabel": "ნიკა", "text": "ზომის ლიმიტი მჭირდება. მოდი 500 მეგაბაიტი იყოს. თუ მეტია, ატვირთვამდე ვუთხრათ მომხმარებელს." },
+        { "id": "s4", "startMs": 32200, "endMs": 39900, "speakerUserId": null, "speakerLabel": "ალექსანდრე", "text": "კარგი. ატვირთვისას progress bar უნდა ჩანდეს, თორემ ხალხი გვერდს დახურავს." },
+        { "id": "s5", "startMs": 40400, "endMs": 49800, "speakerUserId": null, "speakerLabel": "ნიკა", "text": "ფაილი პირდაპირ Supabase Storage-ში წავა signed URL-ით, ჩვენს server-ზე არ გაივლის." },
         { "id": "s6", "startMs": 50300, "endMs": 59600, "speakerUserId": null, "speakerLabel": "გიორგი", "text": "ატვირთვის შემდეგ იგივე pipeline გაეშვება, რაც live call-ზე: transcript და ticket-ები ერთნაირად." },
-        { "id": "s7", "startMs": 60100, "endMs": 69000, "speakerUserId": null, "speakerLabel": "ნინო", "text": "YouTube-ის ლინკიდან იმპორტზეც მკითხეს. ამ ეტაპზე ამას არ ვაკეთებთ და თიქეთს არ ვქმნით." },
-        { "id": "s8", "startMs": 69500, "endMs": 78400, "speakerUserId": null, "speakerLabel": "ლუკა", "text": "ღია კითხვაა, რამდენ ხანს ვინახავთ ატვირთულ audio ფაილს. Retention-ზე legal-ს უნდა ვკითხოთ." }
+        { "id": "s7", "startMs": 60100, "endMs": 69000, "speakerUserId": null, "speakerLabel": "ალექსანდრე", "text": "YouTube-ის ლინკიდან იმპორტზეც მკითხეს. ამ ეტაპზე ამას არ ვაკეთებთ და თიქეთს არ ვქმნით." },
+        { "id": "s8", "startMs": 69500, "endMs": 78400, "speakerUserId": null, "speakerLabel": "ნიკა", "text": "ღია კითხვაა, რამდენ ხანს ვინახავთ ატვირთულ audio ფაილს. Retention-ზე legal-ს უნდა ვკითხოთ." }
       ],
       "tasks": [
         {

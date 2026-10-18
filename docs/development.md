@@ -2,7 +2,7 @@
 
 ## Current repository
 
-The identity-lane skeleton exists: a Next.js 16.4 App Router app (TypeScript, Tailwind 4, npm, Node 24), Supabase SSR auth, one checked-in schema migration with RLS, and focused tests. A selected-context Daily/Claude/Linear slice is implemented; live capture/publication remains unverified, and Inngest/upload are not built. No CI pipeline or deployment exists. Read [AGENTS.md](../AGENTS.md) before editing; scope is [Product](product.md), boundaries are [Architecture](architecture.md).
+The identity-lane skeleton exists: a Next.js 16.4 App Router app (TypeScript, Tailwind 4, npm, Node 24), Supabase SSR auth, one checked-in schema migration with RLS, and focused tests. A selected-context Daily/Claude/Linear slice is implemented; live capture/publication remains unverified, and Inngest/upload are not built. Production is [https://shiproom-weebpapis-projects.vercel.app](https://shiproom-weebpapis-projects.vercel.app); Vercel rebuilds it from `master` on the existing `weebpapis-projects/shiproom` project. There is no GitHub Actions CI. Read [AGENTS.md](../AGENTS.md) before editing; scope is [Product](product.md), boundaries are [Architecture](architecture.md).
 
 This Next.js version differs from older training data. Read the relevant guide in `node_modules/next/dist/docs/` before using a Next.js API (for example, `middleware` is now `src/proxy.ts`). `next dev` appends a Next.js agent-rules block to `AGENTS.md`; keep it committed.
 
@@ -50,13 +50,14 @@ Run it once per project; it is not idempotent. Afterward, confirm with a signed-
 
 ## Configuration inventory to implement
 
-The app reads `NEXT_PUBLIC_APP_URL`, `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` (`src/lib/env.ts`), and `SUPABASE_SERVICE_ROLE_KEY`, `CREDENTIAL_ENCRYPTION_KEY`, `LINEAR_CLIENT_ID`, `LINEAR_CLIENT_SECRET`, `DAILY_API_KEY`, `LINEAR_API_KEY`, `ANTHROPIC_API_KEY`, optional `ANTHROPIC_WORKSPACE_ID`, and optional `ANTHROPIC_MODEL` (`src/lib/server/config.ts`). Other names are only checked for presence on the Connections page until their lane consumes them. Public-prefixed values are deliberately public; every other value must remain server-side.
+The app reads `NEXT_PUBLIC_APP_URL`, `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` (`src/lib/env.ts`), and `SUPABASE_SERVICE_ROLE_KEY`, `CREDENTIAL_ENCRYPTION_KEY`, `LINEAR_CLIENT_ID`, `LINEAR_CLIENT_SECRET`, `DAILY_API_KEY`, `LINEAR_API_KEY`, optional `CURSOR_PR_REPO`, `ANTHROPIC_API_KEY`, optional `ANTHROPIC_WORKSPACE_ID`, and optional `ANTHROPIC_MODEL` (`src/lib/server/config.ts`). Other names are only checked for presence on the Connections page until their lane consumes them. Public-prefixed values are deliberately public; every other value must remain server-side.
 
 - `NEXT_PUBLIC_APP_URL`: canonical app origin and callback/link base; use an explicit local origin for development.
 - `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`: browser Supabase project connection. RLS protects access; the public key is not a team authorization mechanism.
 - `SUPABASE_SERVICE_ROLE_KEY`: privileged server access only. Configure the GitHub login OAuth app/client credentials through the Supabase dashboard, with its required auth callback.
 - `CREDENTIAL_ENCRYPTION_KEY`: base64-encoded 32 random bytes. Provider tokens are stored as `v1.<iv>.<tag>.<ciphertext>` (AES-256-GCM, associated data `<teamId>:<provider>`) in `private.connection_secrets`, reachable only through `service_role` RPCs. No key rotation yet; changing the key invalidates stored tokens (reconnect Linear).
 - `LINEAR_CLIENT_ID`, `LINEAR_CLIENT_SECRET`: OAuth app credentials; registered callback must match the implemented server route exactly. Per-team access/refresh tokens belong in encrypted connection storage, not public env variables.
+- `CURSOR_PR_REPO`: fallback `owner/name` when a meeting has no selected GitHub repository (scripted `/demo`). Example: `WeebPapi/acme-repo-picker`. Ordinary meetings use the selected approved repo instead.
 - `GITHUB_APP_ID`, `GITHUB_APP_PRIVATE_KEY`: selected-repository installation access for private context. Store installation/team mappings in the database. Public-only context fallback must be visible in status; do not request broad write scopes to save setup time.
 - `DAILY_API_KEY`, `DAILY_WEBHOOK_SECRET`: server room/transcript operations and base64 webhook HMAC secret. The browser receives only short-lived room tokens.
 - `DEEPGRAM_API_KEY`: server upload transcription; document callback authentication/correlation secrets if that mode is used.

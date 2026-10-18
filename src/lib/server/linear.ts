@@ -1,6 +1,7 @@
 import "server-only";
 import { z } from "zod";
 import { createHash } from "node:crypto";
+import type { CursorWork } from "@/lib/call-result";
 
 const AUTHORIZE_URL = "https://linear.app/oauth/authorize";
 const TOKEN_URL = "https://api.linear.app/oauth/token";
@@ -183,13 +184,88 @@ export async function updateLinearIssue(authorization: string, input: { id: stri
   return { ok: false as const, error: "Linear could not confirm the update. Retry the saved action; no replacement issue will be created." };
 }
 
-export async function createLinearIssue(authorization: string, input: { id: string; teamId: string; projectId: string | null; title: string; description: string }) {
+export async function findCursorDelegate(authorization: string): Promise<string | null> {
+  try {
+    const data = await linearQuery(
+      authorization,
+      `query { users(filter: { name: { eqIgnoreCase: "Cursor" }, app: { eq: true } }, first: 1) { nodes { id } } }`,
+      z.object({ users: z.object({ nodes: z.array(z.object({ id: z.string() })) }) }),
+    );
+    return data.users.nodes[0]?.id ?? null;
+  } catch {
+    return null;
+  }
+}
+
+const agentSessionStatus = z.enum(["pending", "active", "stopping", "complete", "awaitingInput", "error", "stale"]);
+const githubPr = /(https:\/\/github\.com\/[^/]+\/[^/]+\/pull\/\d+)/;
+
+export async function fetchCursorWork(authorization: string, issueIds: string[]): Promise<Record<string, CursorWork>> {
+  if (issueIds.length === 0) return {};
+  const data = await linearQuery(
+    authorization,
+    `query($ids: [ID!]) {
+      issues(filter: { id: { in: $ids } }, first: 10) {
+        nodes {
+          id
+          delegate { name }
+          agentSessions(first: 3, orderBy: updatedAt) {
+            nodes {
+              status
+              url
+              pullRequests(first: 3) { nodes { pullRequest { url number status } } }
+            }
+          }
+          attachments(first: 10) { nodes { url } }
+        }
+      }
+    }`,
+    z.object({
+      issues: z.object({
+        nodes: z.array(z.object({
+          id: z.string(),
+          delegate: z.object({ name: z.string() }).nullable(),
+          agentSessions: z.object({
+            nodes: z.array(z.object({
+              status: agentSessionStatus,
+              url: z.string().nullable(),
+              pullRequests: z.object({ nodes: z.array(z.object({ pullRequest: z.object({ url: z.string(), number: z.number(), status: z.string() }).nullable() })) }),
+            })),
+          }),
+          attachments: z.object({ nodes: z.array(z.object({ url: z.string() })) }),
+        })),
+      }),
+    }),
+    { ids: issueIds },
+  );
+  const work: Record<string, CursorWork> = {};
+  for (const issue of data.issues.nodes) {
+    const session = issue.agentSessions.nodes[0];
+    const pr = session?.pullRequests.nodes.map((row) => row.pullRequest).find((item) => item) ?? null;
+    const attached = issue.attachments.nodes.map((row) => row.url.match(githubPr)?.[1]).find(Boolean) ?? null;
+    const href = pr?.url ?? attached ?? session?.url ?? null;
+    if (pr || attached) {
+      work[issue.id] = { issueId: issue.id, phase: "ready", label: pr ? `${pr.status === "draft" ? "Draft " : ""}#${pr.number}` : "PR", href };
+      continue;
+    }
+    if (session?.status === "awaitingInput") work[issue.id] = { issueId: issue.id, phase: "needs_input", label: "Cursor needs input", href };
+    else if (session?.status === "error") work[issue.id] = { issueId: issue.id, phase: "error", label: "Cursor failed", href };
+    else if (session && (session.status === "pending" || session.status === "active" || session.status === "stopping")) {
+      work[issue.id] = { issueId: issue.id, phase: "building", label: "Cursor is building a PR…", href };
+    } else if (issue.delegate?.name.toLowerCase() === "cursor") {
+      work[issue.id] = { issueId: issue.id, phase: "assigned", label: "Assigned to Cursor", href };
+    }
+  }
+  return work;
+}
+
+export async function createLinearIssue(authorization: string, input: { id: string; teamId: string; projectId: string | null; title: string; description: string; delegateId?: string | null }) {
   const marker = contentMarker(input.description);
   try {
     const data = await linearQuery(authorization,
       `mutation($input: IssueCreateInput!) { issueCreate(input: $input) { success issue { id team { id } project { id } identifier url description } } }`,
       z.object({ issueCreate: z.object({ success: z.boolean(), issue: issueSchema.nullable() }) }),
-      { input: { id: input.id, teamId: input.teamId, ...(input.projectId ? { projectId: input.projectId } : {}), title: input.title, description: `${input.description}\n\n${marker}` } });
+      { input: { id: input.id, teamId: input.teamId, ...(input.projectId ? { projectId: input.projectId } : {}), ...(input.delegateId ? { delegateId: input.delegateId } : {}), title: input.title, description: `${input.description}\n\n${marker}` } });
     const issue = data.issueCreate.issue;
     if (data.issueCreate.success && issue && issue.id === input.id && issue.team.id === input.teamId && (issue.project?.id ?? null) === input.projectId && issue.description?.includes(marker)) return { ok: true as const, ...issue };
     return { ok: false as const, error: "Linear did not create the issue." };

@@ -14,6 +14,7 @@ export const serverConfig = {
   dailyApiKey: () => read("DAILY_API_KEY"),
   linearApiKey: () => read("LINEAR_API_KEY"),
   linearDemoTeamId: () => read("LINEAR_DEMO_TEAM_ID"),
+  cursorPrRepo: () => read("CURSOR_PR_REPO"),
   anthropicApiKey: () => read("ANTHROPIC_API_KEY"),
   anthropicWorkspaceId: () => read("ANTHROPIC_WORKSPACE_ID"),
   anthropicModel: () => read("ANTHROPIC_MODEL") || "claude-sonnet-4-5",
