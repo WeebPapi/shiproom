@@ -139,8 +139,8 @@ it.each([{ saveFails: false, hasTasks: true, amend: false }, { saveFails: true, 
     expect(issue.teamId).toBe("chosen-team");
     expect(issue.projectId).toBe("chosen-project");
     expect(issue.delegateId).toBe("cursor-user");
-    expect(issue.description).toContain("[repo=example/demo]");
-    expect(issue.description).toContain("[model=cursor-grok-4.6-high-fast]");
+    expect(issue.description).toContain("`[repo=example/demo]`");
+    expect(issue.description).toContain("`[model=cursor-grok-4.6-high-fast]`");
     expect(issue.description).toContain("Source: https://github.com/example/demo");
     expect(issue.description).toContain("Speaker 1): შევთანხმდით");
     expect(rows.tasks.some((row) => row.linear_issue_uuid === issue.id)).toBe(true);
@@ -213,8 +213,8 @@ it("publishes the fixed Georgian demo without capture or AI, and retries a faile
   expect(created[2].id).toBe(created[1].id);
   expect(created.every((issue) => issue.projectId === "demo-project")).toBe(true);
   expect(created[0].description).toContain("Scripted demo");
-  expect(created[0].description).toContain("[repo=WeebPapi/acme-repo-picker]");
-  expect(created[0].description).toContain("[model=cursor-grok-4.6-high-fast]");
+  expect(created[0].description).toContain("`[repo=WeebPapi/acme-repo-picker]`");
+  expect(created[0].description).toContain("`[model=cursor-grok-4.6-high-fast]`");
   expect(created[0].delegateId).toBe("cursor-user");
   expect(created.map((issue) => issue.title)).toEqual([
     "[shiproom] Add repository picker loading state",

@@ -3,6 +3,11 @@ import { SHIPROOM_TITLE_PREFIX, transcriptSchema, type Transcript } from "./cont
 /** Linear `[model=]` Cloud Agent id for Grok 4.6 High Fast; Linear ignores the dashboard default. */
 const CURSOR_CLOUD_MODEL = "cursor-grok-4.6-high-fast";
 
+function cursorHint(key: "repo" | "model", value: string): string {
+  // Linear markdown stores bare [tag] as \[tag\], which Cursor does not parse.
+  return `\`[${key}=${value}]\``;
+}
+
 export type Cue = { speakerLabel: string | null; text: string; startMs: number; endMs: number };
 
 export type LinearTeamList = { id: string; name: string; projects: { id: string; name: string }[] };
@@ -153,7 +158,7 @@ export function issueDescription(input: {
     `Evidence:\n${evidence.map((line) => `- ${line}`).join("\n")}`,
     ...(input.task.sourceReferences ?? []).map((source) => `Source: ${source.url}`),
     `Meeting: ${input.meetingUrl}`,
-    input.cursorRepo ? `Open a draft PR in this repository.\n[repo=${input.cursorRepo}] [model=${CURSOR_CLOUD_MODEL}]` : null,
+    input.cursorRepo ? `Open a draft PR in this repository.\n${cursorHint("repo", input.cursorRepo)} ${cursorHint("model", CURSOR_CLOUD_MODEL)}` : null,
     input.sourceNote,
     taskMarker(input.meetingId, input.ordinal),
   ]
