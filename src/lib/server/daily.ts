@@ -39,7 +39,7 @@ function roomFrom(
 }
 
 /** Private room, reused by meeting id. Transcription storage is requested and reported honestly. */
-export async function ensurePrivateRoom(meetingId: string): Promise<DailyRoom | { error: string }> {
+export async function ensurePrivateRoom(meetingId: string, isDemo = false): Promise<DailyRoom | { error: string }> {
   const name = `sr${meetingId.replaceAll("-", "")}`;
   const existing = await daily(`/rooms/${encodeURIComponent(name)}`);
   if (existing.ok) {
@@ -52,11 +52,10 @@ export async function ensurePrivateRoom(meetingId: string): Promise<DailyRoom | 
     enable_knocking: false,
     enable_screenshare: true,
     max_participants: 8,
-    enable_transcription_storage: true,
-    auto_transcription_settings: { language: "en" },
+    ...(isDemo ? {} : { enable_transcription_storage: true, auto_transcription_settings: { language: "en" } }),
   };
   let created = await daily("/rooms", { method: "POST", body: JSON.stringify({ name, privacy: "private", properties }) });
-  let transcription: "daily" | "unavailable" = "daily";
+  let transcription: "daily" | "unavailable" = isDemo ? "unavailable" : "daily";
   if (!created.ok) {
     transcription = "unavailable";
     created = await daily("/rooms", {

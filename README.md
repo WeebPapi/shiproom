@@ -20,6 +20,8 @@ Shiproom brings a simple, Linear-inspired meeting experience together with Linea
 
 ## The hackathon demo
 
+For a predictable video take, use the authenticated [`/demo` filming flow](docs/demo.md): a real huddle, a fixed synthetic Georgian transcript, and two real Linear issues. Apply its migration before use; it bypasses transcription and AI extraction and is visibly labeled scripted.
+
 - **Planning call:** choose a Linear team/project and GitHub repo, schedule or start a real browser call, discuss a feature, and receive actionable Linear issues with source evidence.
 - **Context-free huddle:** start quickly, let the agent resolve project/repo from the conversation, and prompt the organizer after the call if the destination is ambiguous.
 

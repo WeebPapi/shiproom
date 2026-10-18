@@ -16,7 +16,7 @@ type SpeechRec = {
   stop: () => void;
 };
 
-export function CallPanel(props: { teamId: string; meetingId: string; isOrganizer: boolean; dailyReady: boolean; georgianMeeting: boolean }) {
+export function CallPanel(props: { teamId: string; meetingId: string; isOrganizer: boolean; dailyReady: boolean; georgianMeeting: boolean; isDemo: boolean; demoHasResult: boolean }) {
   const router = useRouter();
   const containerRef = useRef<HTMLDivElement>(null);
   const frameRef = useRef<{ leave: () => Promise<unknown>; destroy: () => void; stopTranscription: () => void } | null>(null);
@@ -48,14 +48,17 @@ export function CallPanel(props: { teamId: string; meetingId: string; isOrganize
       });
       frameRef.current = frame;
       const browser = () => {
+        if (props.isDemo) return;
         speech = startBrowserSpeech(started, browserCues, speechRef, setStatus) ?? speech;
       };
       frame.on("transcription-started", () => setStatus("Daily transcription is on."));
       frame.on("transcription-error", (event) => {
+        if (props.isDemo) return;
         setStatus(`Daily transcription did not start${event.errorMsg ? `: ${event.errorMsg}` : ""}. Capturing this microphone instead.`);
         browser();
       });
       frame.on("transcription-message", (event) => {
+        if (props.isDemo) return;
         const raw = event.rawResponse ?? {};
         const interim = raw.is_final === false && raw.speech_final !== true;
         const text = event.text?.trim();
@@ -66,11 +69,12 @@ export function CallPanel(props: { teamId: string; meetingId: string; isOrganize
         dailyCues.current.push({ speakerLabel: event.participantId ? `Speaker ${event.participantId.slice(0, 4)}` : null, text, startMs, endMs: startMs });
       });
       frame.on("joined-meeting", () => {
+        if (props.isDemo) return;
         if (join.transcription === "unavailable") browser();
         else if (props.isOrganizer) frame.startTranscription({ language: "en" });
       });
       await frame.join({ url: join.url, token: join.token });
-      if (!cancel) setStatus(join.transcription === "daily" ? "In the call. Waiting for Daily transcription." : "In the call. Daily transcription storage was not enabled; this microphone is being captured.");
+      if (!cancel) setStatus(props.isDemo ? "Demo huddle live. Say anything; the Georgian script is fixed." : join.transcription === "daily" ? "In the call. Waiting for Daily transcription." : "In the call. Daily transcription storage was not enabled; this microphone is being captured.");
     })().catch(() => setError("The call could not be opened in this browser."));
     return () => {
       cancel = true;
@@ -78,15 +82,20 @@ export function CallPanel(props: { teamId: string; meetingId: string; isOrganize
       frameRef.current?.destroy();
       frameRef.current = null;
     };
-  }, [join, props.isOrganizer]);
+  }, [join, props.isOrganizer, props.isDemo]);
 
   async function start() {
     setPending(true);
     setError(null);
-    const opened = await startMeetingCall({ teamId: props.teamId, meetingId: props.meetingId, consented: true });
-    setPending(false);
-    if ("error" in opened) setError(opened.error);
-    else setJoin(opened);
+    try {
+      const opened = await startMeetingCall({ teamId: props.teamId, meetingId: props.meetingId, consented: true });
+      if ("error" in opened) setError(opened.error);
+      else setJoin(opened);
+    } catch {
+      setError("The call could not be started. Try again.");
+    } finally {
+      setPending(false);
+    }
   }
 
   async function endCall() {
@@ -104,25 +113,30 @@ export function CallPanel(props: { teamId: string; meetingId: string; isOrganize
     frameRef.current = null;
     const segments = dailyCues.current.length > 0 ? dailyCues.current : browserCues.current;
     const origin = dailyCues.current.length > 0 ? "daily-live" : "browser";
-    const finished = await endMeetingCall({ teamId: props.teamId, meetingId: props.meetingId, origin, consented: true, segments });
-    setResult(finished);
-    setJoin(null);
-    setPending(false);
-    setStatus("Call ended.");
-    router.refresh();
+    try {
+      const finished = await endMeetingCall({ teamId: props.teamId, meetingId: props.meetingId, origin, consented: true, segments });
+      setResult(finished);
+      setStatus("Call ended.");
+      router.refresh();
+    } catch {
+      setError("Tasks could not be created. Retry this meeting to recover any issues already created.");
+    } finally {
+      setJoin(null);
+      setPending(false);
+    }
   }
 
   if (!props.dailyReady) return <p className="text-warning">Daily is not set up on this server yet.</p>;
 
   return (
     <div className="space-y-3">
-      {props.georgianMeeting && <p className="text-muted">This meeting is marked Georgian. This path transcribes and extracts English.</p>}
+      {props.georgianMeeting && !props.isDemo && <p className="text-muted">This meeting is marked Georgian. This path transcribes and extracts English.</p>}
       <p role="status" className="flex items-center gap-2 text-xs text-muted">
         <span aria-hidden className={`size-1.5 rounded-full ${join ? "bg-success" : "bg-muted/40"}`} />
         {status}
       </p>
       {error && <p role="alert" className="text-danger">{error}</p>}
-      {!join && !result && (
+      {!join && !result && !props.demoHasResult && (
         <form
           className="space-y-3"
           onSubmit={(event) => {
@@ -132,10 +146,10 @@ export function CallPanel(props: { teamId: string; meetingId: string; isOrganize
         >
           <label className="flex items-start gap-2 text-muted accent-accent">
             <input type="checkbox" checked={consented} onChange={(event) => setConsented(event.target.checked)} className="mt-1" />
-            <span>Transcribe this call in English. Agreed tasks can become Linear issues. Microphone, camera, and screen sharing use the Daily controls.</span>
+            <span>{props.isDemo ? "Use the fixed Georgian script for this demo, regardless of speech. Ending the huddle creates two real Linear issues." : "Transcribe this call in English. Agreed tasks can become Linear issues. Microphone, camera, and screen sharing use the Daily controls."}</span>
           </label>
           <button type="submit" className={buttonClass.primary} disabled={!consented || pending}>
-            {pending ? "Starting…" : "Start call"}
+            {pending ? "Starting…" : props.isDemo ? "Start huddle" : "Start call"}
           </button>
         </form>
       )}
@@ -153,6 +167,11 @@ export function CallPanel(props: { teamId: string; meetingId: string; isOrganize
         </>
       )}
       {result && <CallOutcome result={result} />}
+      {props.isDemo && props.isOrganizer && !join && (props.demoHasResult || result || error) && (
+        <button type="button" className={buttonClass.secondary} onClick={() => void endCall()} disabled={pending}>
+          {pending ? "Creating tasks…" : "Retry this take"}
+        </button>
+      )}
     </div>
   );
 }

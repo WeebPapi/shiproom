@@ -31,6 +31,8 @@ The GitHub OAuth change also passed build, typecheck, lint, and all 37 tests on 
 
 ## Database migrations
 
+The scripted `/demo` flow requires `20261018090000_scripted_demo.sql` after the earlier migrations. Its setup and filming script are in [Demo](demo.md). Apply it before running this code against an existing database: meeting reads include the new `is_demo` column. The connected Supabase MCP project was checked on 2026-10-18 and differs from this checkout's configured project; no remote migration was applied through it.
+
 Schema, constraints, RLS, RPCs, and `shiproom-audio` storage policies live in `supabase/migrations/`. **They are not applied to any hosted project yet.** Apply them to the team's canonical Supabase project with either:
 
 - Dashboard: **SQL Editor → New query**, paste `supabase/migrations/20261017130000_initial_schema.sql`, run once.

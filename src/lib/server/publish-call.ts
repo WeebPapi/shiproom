@@ -13,6 +13,7 @@ import {
 } from "@/lib/call-result";
 import { validateExtractionAgainstTranscript, type LiveCapture, type Transcript } from "@/lib/contracts";
 import { getPublicEnv } from "@/lib/env";
+import { DEMO_EXTRACTION, DEMO_NOTE, demoTranscript } from "@/lib/demo";
 import { extractAgreedTasks } from "@/lib/server/claude";
 import { createRoomToken, ensurePrivateRoom, fetchStoredTranscript } from "@/lib/server/daily";
 import { createLinearIssue, findIssueByMarker, listLinearDestinations } from "@/lib/server/linear-personal";
@@ -28,7 +29,7 @@ export type CallTask = { title: string; url: string | null; identifier: string |
 
 export type CallFinish = {
   error: string | null;
-  transcriptSource: "daily-stored" | "daily-live" | "browser" | null;
+  transcriptSource: "daily-stored" | "daily-live" | "browser" | "demo" | null;
   transcriptNote: string | null;
   summary: string | null;
   decisions: string[];
@@ -71,15 +72,16 @@ export async function openMeetingCall(input: {
   userId: string;
   displayName: string;
   isOrganizer: boolean;
+  isDemo: boolean;
 }): Promise<CallOpen> {
-  const room = await ensurePrivateRoom(input.meetingId);
+  const room = await ensurePrivateRoom(input.meetingId, input.isDemo);
   if ("error" in room) return { error: room.error };
   const token = await createRoomToken({
     roomName: room.name,
     userId: input.userId,
     displayName: input.displayName,
     isOwner: input.isOrganizer,
-    transcribe: room.transcription === "daily",
+    transcribe: !input.isDemo && room.transcription === "daily",
   });
   if ("error" in token) return { error: token.error };
 
@@ -112,6 +114,7 @@ export async function openMeetingCall(input: {
 }
 
 function sourceNote(kind: CallFinish["transcriptSource"]): string {
+  if (kind === "demo") return DEMO_NOTE;
   if (kind === "daily-stored") return "Transcript source: Daily stored transcript.";
   if (kind === "daily-live") return "Transcript source: Daily live captions from this browser. Daily did not return a stored transcript file.";
   return "Transcript source: browser speech recognition of this device's microphone. Daily transcription did not produce a transcript. Other people are included only if this microphone heard them.";
@@ -146,7 +149,7 @@ async function rememberTranscript(admin: Admin | null, input: { teamId: string; 
     meeting_id: input.meetingId,
     revision: 1,
     source: input.transcript.source,
-    language: "en",
+    language: input.transcript.language,
     provider_transcript_id: input.providerId,
     segments: input.transcript.segments,
     complete: input.transcript.complete,
@@ -170,6 +173,7 @@ async function publishTasks(input: {
   tasks: { title: string; description: string; acceptanceCriteria: string[]; evidenceSegmentIds: string[] }[];
   destination: { teamId: string; projectId: string | null };
   note: string;
+  requirePersistence: boolean;
 }): Promise<{ tasks: CallTask[]; persistenceWarning: string | null }> {
   const results: CallTask[] = [];
   let persistenceWarning: string | null = null;
@@ -211,6 +215,16 @@ async function publishTasks(input: {
         if (error) {
           console.error("task insert failed", error.message);
           persistenceWarning = UNSAVED;
+          if (input.requirePersistence) {
+            // A concurrent retry may have won the insert; both requests must use its saved UUID.
+            const { data: saved } = await input.admin.from("tasks").select("linear_issue_uuid")
+              .eq("meeting_id", input.meetingId).eq("ordinal", ordinal).maybeSingle();
+            if (!saved?.linear_issue_uuid) {
+              results.push({ title: task.title, url: null, identifier: null, error: "The task identity could not be saved. Retry this take; no issue was created for this task." });
+              continue;
+            }
+            linearId = saved.linear_issue_uuid;
+          }
         }
       }
     } else persistenceWarning = UNSAVED;
@@ -258,8 +272,10 @@ export async function finishMeetingCall(input: {
   organizerId: string;
   roomName: string;
   capture: LiveCapture;
+  isDemo: boolean;
 }): Promise<CallFinish> {
   const admin = createAdminClient();
+  if (input.isDemo && !admin) return emptyFinish("Demo publication requires server database access.");
   if (admin) {
     const { data: existing } = await admin
       .from("tasks")
@@ -267,7 +283,10 @@ export async function finishMeetingCall(input: {
       .eq("meeting_id", input.meetingId)
       .order("ordinal");
     const rows = existing ?? [];
-    if (rows.some((row) => row.publication_status === "published")) {
+    const alreadyPublished = input.isDemo
+      ? rows.length === DEMO_EXTRACTION.tasks.length && rows.every((row) => row.publication_status === "published")
+      : rows.some((row) => row.publication_status === "published");
+    if (alreadyPublished) {
       revalidatePath(`/teams/${input.teamId}/meetings/${input.meetingId}`);
       return {
         error: null,
@@ -288,7 +307,9 @@ export async function finishMeetingCall(input: {
     }
   }
   let persistenceWarning = await patchMeeting(admin, input.meetingId, { capture_status: "finalizing", processing_status: "extracting", ended_at: new Date().toISOString() });
-  const captured = await captureTranscript(input.meetingId, input.roomName, input.capture);
+  const captured = input.isDemo
+    ? { transcript: demoTranscript(input.meetingId), kind: "demo" as const, providerId: null }
+    : await captureTranscript(input.meetingId, input.roomName, input.capture);
   if ("error" in captured) {
     await patchMeeting(admin, input.meetingId, { capture_status: "failed", processing_status: "failed", error_stage: "transcript", error_message: captured.error });
     revalidatePath(`/teams/${input.teamId}/meetings/${input.meetingId}`);
@@ -298,9 +319,10 @@ export async function finishMeetingCall(input: {
   const note = sourceNote(captured.kind);
   const saveError = await rememberTranscript(admin, { teamId: input.teamId, meetingId: input.meetingId, transcript: captured.transcript, providerId: captured.providerId });
   persistenceWarning = persistenceWarning ?? saveError;
+  if (input.isDemo && persistenceWarning) return emptyFinish("The demo transcript could not be saved. Check database setup and retry this take before creating issues.");
   await patchMeeting(admin, input.meetingId, { capture_status: "ready" });
 
-  const extracted = await extractAgreedTasks(captured.transcript);
+  const extracted = input.isDemo ? { ok: true as const, result: DEMO_EXTRACTION } : await extractAgreedTasks(captured.transcript);
   if (!extracted.ok) {
     await patchMeeting(admin, input.meetingId, { processing_status: "failed", error_stage: "extraction", error_message: extracted.error });
     revalidatePath(`/teams/${input.teamId}/meetings/${input.meetingId}`);
@@ -378,6 +400,7 @@ export async function finishMeetingCall(input: {
     tasks: extracted.result.tasks,
     destination: { teamId: destination.teamId, projectId: destination.projectId },
     note,
+    requirePersistence: input.isDemo,
   });
   const failed = published.tasks.some((task) => task.error);
   const created = published.tasks.some((task) => task.url);

@@ -4,6 +4,8 @@ Last updated: 2026-10-17. Update this file for relevant decisions and verified p
 
 ## Confirmed user requirements
 
+- **D19 — scripted filming demo (2026-10-18):** add an authenticated `/demo` huddle using a fixed synthetic 30-second Georgian transcript and two fixed, grounded tasks regardless of speech. Daily remains the call UI; speech recognition and model extraction are bypassed only for persisted demo meetings. Linear writes remain real and restricted to a Shiproom destination. Label the page, transcript, and issue descriptions as scripted; this does not verify Georgian transcription or extraction quality. Keep the normal call path unchanged.
+
 - **D1 — product:** browser-only, straightforward Linear-inspired UI for developer meetings; team formation with linked GitHub identities/email and Linear context.
 - **D2 — primary scenario:** planning conversation becomes actionable Linear issues informed by read-only GitHub context. No code/PR generation in this build.
 - **D3 — context:** modal before scheduling or starting a huddle offers connected repo/team/project choices and inference. Unresolved context prompts the organizer after the call.
@@ -40,6 +42,8 @@ These are scoped implementation recommendations, chosen to make the request conc
 - **E10 — scaffold choices:** Next.js 16.4 App Router with `cacheComponents` turned off (nearly every page reads the session; without it, conventional dynamic rendering applies). Supabase SSR + RLS with explicit column grants; user-authored rows go through the user's client or `auth.uid()`-checked RPCs, provider-derived rows through `service_role` after an explicit membership check. No ORM or generated DB types yet. RLS is tested against the real migration in-process with PGlite and Supabase role/schema stubs.
 
 ## Implementation ledger
+
+- **2026-10-18 — scripted filming path:** implemented D19 at `/demo`, reusing the authenticated Daily call UI and Linear publisher. Fixed Georgian transcript/tasks are server-selected from an immutable-to-browser meeting flag, clearly labeled, and saved before publication. Demo retries finish missing tasks with persisted UUIDs; ordinary-call retry behavior is unchanged. Added a migration and the [30-second filming runbook](demo.md). Verified 44 tests (including real migration/RLS checks and mocked publication failures), typecheck, lint, production build, and signed-out `/demo` HTTP redirect on Node 22.13.1. Node 24, native-speaker review, live Daily/Linear, and signed-in visual QA remain unverified; preview snapshots timed out twice and the fallback browser was unavailable. No remote migration was applied: the connected Supabase MCP project differs from the app's configured project. This is not AC9 evidence.
 
 - **2026-10-17 Tailscale allowlist mismatch identified:** the user supplied saved `http://desktop-jjp034u.tail51e7da.ts.net:3000/...` entries. The browser uses `https://desktop-jjp034u.tail51e7da.ts.net/...`; the scheme and port differ. The matching HTTPS entry was subsequently saved and the full flow passed (verification below).
 

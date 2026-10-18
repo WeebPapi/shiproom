@@ -4,6 +4,8 @@ Status: planning document; all implementation items are unstarted. Provider setu
 
 ## Demo narrative
 
+For the requested deterministic 30-second video, use the separate [scripted `/demo` runbook](demo.md). It has fixed Georgian input/tasks and real Linear writes, with explicit disclosure; it is not evidence that the live transcription/extraction acceptance gates below passed.
+
 **S1, selected-context planning (primary):** open the team home, schedule a short planning call with repo/project context, download its calendar invite, and join from independent devices. Discuss adding loading and empty states to a repository picker, explicitly agree the work, and end the call. Show actual `[shiproom]` issues in Linear with evidence and links in participants' Shiproom inboxes. Open an issue in Linear and edit it there. Show the read-only GitHub context that informed the result.
 
 **S2, inferred-context huddle (second path):** start a huddle with context inference. Use a unique repo/project reference for one run; use an ambiguous reference for the recovery demonstration. The second run must pause, prompt the organizer, and resume publication only after valid context is supplied. This reuses the S1 pipeline rather than introducing a separate agent feature.

@@ -21,7 +21,7 @@ export async function startMeetingCall(input: { teamId: string; meetingId: strin
   const supabase = await createClient();
   const { data: meeting } = await supabase
     .from("meetings")
-    .select("id, organizer_id, kind")
+    .select("id, organizer_id, kind, is_demo")
     .eq("id", parsed.data.meetingId)
     .eq("team_id", parsed.data.teamId)
     .maybeSingle();
@@ -34,6 +34,7 @@ export async function startMeetingCall(input: { teamId: string; meetingId: strin
     userId: access.user.id,
     displayName: access.user.displayName,
     isOrganizer: meeting.organizer_id === access.user.id,
+    isDemo: meeting.is_demo === true,
   });
 }
 
@@ -46,7 +47,7 @@ export async function endMeetingCall(input: unknown): Promise<CallFinish> {
   const supabase = await createClient();
   const { data: meeting } = await supabase
     .from("meetings")
-    .select("id, organizer_id, daily_room_name")
+    .select("id, organizer_id, daily_room_name, is_demo")
     .eq("id", parsed.data.meetingId)
     .eq("team_id", parsed.data.teamId)
     .maybeSingle();
@@ -60,6 +61,7 @@ export async function endMeetingCall(input: unknown): Promise<CallFinish> {
     organizerId: access.user.id,
     roomName,
     capture: parsed.data,
+    isDemo: meeting.is_demo === true,
   });
 }
 

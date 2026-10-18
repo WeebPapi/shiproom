@@ -12,6 +12,7 @@ import { STATUS_LABEL } from "@/lib/server/meetings";
 import { createClient } from "@/lib/supabase/server";
 import { formatInZone } from "@/lib/time";
 import type { CaptureStatus, ProcessingStatus } from "@/lib/contracts";
+import { DEMO_NOTE, DEMO_SEGMENTS } from "@/lib/demo";
 import { CallPanel } from "./call-panel";
 
 type MeetingRow = {
@@ -34,6 +35,7 @@ type MeetingRow = {
   open_questions: string[];
   error_message: string | null;
   organizer_id: string;
+  is_demo: boolean;
 };
 
 type TaskRow = { id: string; ordinal: number; payload: { title?: string }; publication_status: string; linear_issue_url: string | null; linear_issue_identifier: string | null };
@@ -47,7 +49,7 @@ export default async function MeetingPage({ params }: { params: Promise<{ teamId
   const { data: meeting } = await supabase
     .from("meetings")
     .select(
-      "id, kind, title, agenda, language, scheduled_start, scheduled_end, timezone, context_mode, github_repository_id, linear_team_id, linear_project_id, capture_status, processing_status, summary, decisions, open_questions, error_message, organizer_id",
+      "id, kind, title, agenda, language, scheduled_start, scheduled_end, timezone, context_mode, github_repository_id, linear_team_id, linear_project_id, capture_status, processing_status, summary, decisions, open_questions, error_message, organizer_id, is_demo",
     )
     .eq("id", meetingId)
     .eq("team_id", teamId)
@@ -95,7 +97,9 @@ export default async function MeetingPage({ params }: { params: Promise<{ teamId
           <section aria-labelledby="call-heading">
             <SectionTitle id="call-heading">Call</SectionTitle>
             <div className={`${cardClass} p-4`}>
-              {meeting.kind === "upload" ? (
+              {meeting.is_demo && meeting.processing_status === "complete" ? (
+                <p className="text-muted">Demo huddle ended. Open an issue below, or start a new take from <Link href="/demo" className="text-accent">the demo studio</Link>.</p>
+              ) : meeting.kind === "upload" ? (
                 <p className="text-muted">This meeting is an upload. Live calling is not used for it.</p>
               ) : (
                 <CallPanel
@@ -104,10 +108,27 @@ export default async function MeetingPage({ params }: { params: Promise<{ teamId
                   isOrganizer={meeting.organizer_id === user.id}
                   dailyReady={Boolean(serverConfig.dailyApiKey())}
                   georgianMeeting={meeting.language === "ka"}
+                  isDemo={meeting.is_demo}
+                  demoHasResult={meeting.is_demo && meeting.processing_status !== "not_started"}
                 />
               )}
             </div>
           </section>
+
+          {meeting.is_demo && meeting.processing_status !== "not_started" && (
+            <section aria-labelledby="demo-transcript">
+              <SectionTitle id="demo-transcript">Georgian transcript · scripted · 00:30</SectionTitle>
+              <p className="mb-3 text-xs text-muted">{DEMO_NOTE}</p>
+              <ol className={`${cardClass} divide-y divide-border`} lang="ka">
+                {DEMO_SEGMENTS.map((segment) => (
+                  <li key={segment.id} className="px-4 py-3">
+                    <p className="mb-1 text-xs text-muted"><span className="font-mono">00:{String(segment.startMs / 1000).padStart(2, "0")}</span> · {segment.speakerLabel}</p>
+                    <p className="leading-relaxed">{segment.text}</p>
+                  </li>
+                ))}
+              </ol>
+            </section>
+          )}
 
           <section aria-labelledby="result-heading" className="space-y-4">
             <SectionTitle id="result-heading">Result</SectionTitle>
@@ -188,7 +209,7 @@ export default async function MeetingPage({ params }: { params: Promise<{ teamId
             >
               <LinearProperties linear={linear} teamId={meeting.linear_team_id} projectId={meeting.linear_project_id} />
             </Suspense>
-            <Property label="Language">{meeting.language === "en" ? "English" : "Georgian (experimental)"}</Property>
+            <Property label="Language">{meeting.is_demo ? "Georgian (scripted demo)" : meeting.language === "en" ? "English" : "Georgian (experimental)"}</Property>
           </dl>
 
           <section aria-labelledby="invitees-heading">

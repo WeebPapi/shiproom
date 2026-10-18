@@ -1,5 +1,7 @@
 # Provider setup and skeleton handoff
 
+**Scripted filming path (2026-10-18):** `/demo` is implemented with fixed Georgian input/tasks and real Daily/Linear calls. Apply the new scripted-demo migration to the configured app database before use; it has not been applied remotely. The connected Supabase MCP targets a different project. See [Demo](demo.md) for prerequisites and the filming script. No extra transcription/extraction credentials are needed for this path.
+
 Checked 2026-10-17. This is the user's requested manual setup checklist. Check off steps only after doing them; unchecked items are not configured. Keep credentials in the ignored `.env.local` or a password manager, never in chat, Git, or this document. [Architecture](architecture.md) owns callback paths and remaining implementation constraints; [Integrations](integrations.md) owns permissions and provider behavior.
 
 Agents: read **Agent-visible status** and [Architecture remaining constraints](architecture.md#remaining-implementation-constraints) before scaffolding. Do not recreate provisioned resources. Do not treat dashboard configuration as a working app.
