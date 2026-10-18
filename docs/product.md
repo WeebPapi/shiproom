@@ -26,7 +26,7 @@ Required scope:
 - Live calls with mic/camera toggles, device selection, screen sharing, participant list, leave, and organizer end-for-everyone. Visible transcription status and consent before capture.
 - Durable transcript, context resolution, extraction of agreed action items, automatic `[shiproom]` Linear issue creation, and in-app delivery to actual participants.
 - Uploading audio into the same workflow; useful error/empty/partial-success states; retries that do not create duplicate issues.
-- After a new Linear issue is created, delegate it to the Cursor Linear agent and show live PR progress on the meeting result. Cursor targets the meeting’s selected GitHub repository, or `CURSOR_PR_REPO` when none is selected (scripted `/demo`). Shiproom does not call GitHub's PR API.
+- After a new Linear issue is created, delegate it to the Cursor Linear agent and show live PR progress on the meeting result. Cursor targets the meeting’s selected GitHub repository, or `CURSOR_PR_REPO` when none is selected (scripted `/demo`), and uses Grok 4.6 High Fast (`[model=cursor-grok-4.6-high-fast]`). Shiproom does not call GitHub's PR API.
 
 Deferred: Google/Outlook calendar sync, email delivery, guest/anonymous access, recurring meetings, mobile polish, global code indexing, Shiproom-owned GitHub writes or code generation, manual two-way issue editing/synchronization in Shiproom (meeting-driven amendments are included), a speaking voice agent, and Meet internals reconstruction. Do not build these during the hackathon. Cursor Cloud Agent PRs are in scope (D20).
 

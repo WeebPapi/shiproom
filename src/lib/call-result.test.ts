@@ -48,5 +48,6 @@ describe("Daily transcript and Linear destination", () => {
     });
     expect(description).toContain("shiproom-task:11111111-1111-4111-8111-111111111111:1");
     expect(description).toContain("[repo=WeebPapi/acme-repo-picker]");
+    expect(description).toContain("[model=cursor-grok-4.6-high-fast]");
   });
 });
