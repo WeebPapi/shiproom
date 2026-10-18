@@ -1,0 +1,171 @@
+{
+  "meetings": [
+    {
+      "id": "539d5183-f5f3-4c4c-9df1-6e9e7fb3002c",
+      "kind": "scheduled",
+      "title": "Sprint planning: inbox notifications",
+      "agenda": "Agree on the inbox notification work for this sprint.",
+      "scheduledStart": "2026-10-14T07:00:00Z",
+      "scheduledEnd": "2026-10-14T07:30:00Z",
+      "timezone": "Asia/Tbilisi",
+      "createdAt": "2026-10-13T15:00:00Z",
+      "startedAt": "2026-10-14T07:01:00Z",
+      "endedAt": "2026-10-14T07:14:00Z",
+      "summary": "The team planned this sprint's inbox notification work: an unread count badge in the sidebar and a single mark-all-as-read action. Email notifications stay out of scope for now.",
+      "decisions": [
+        "Show an unread badge next to Inbox in the sidebar, capped at 9+.",
+        "Add a mark-all-as-read action scoped to the signed-in user.",
+        "No email notifications at this stage; in-app only."
+      ],
+      "openQuestions": ["Will push notifications be needed later?"],
+      "segments": [
+        { "id": "s1", "startMs": 0, "endMs": 9400, "speakerUserId": null, "speakerLabel": "ნინო", "text": "კარგი, დავიწყოთ. დღეს inbox-ის notification-ებზე უნდა შევთანხმდეთ, რას ვაკეთებთ ამ sprint-ში." },
+        { "id": "s2", "startMs": 9800, "endMs": 21500, "speakerUserId": null, "speakerLabel": "გიორგი", "text": "ახლა მომხმარებელმა არ იცის, რამდენი წაუკითხავი შეტყობინება აქვს. Sidebar-ში Inbox-ის გვერდით unread badge უნდა გამოვაჩინოთ, რიცხვით." },
+        { "id": "s3", "startMs": 22000, "endMs": 33200, "speakerUserId": null, "speakerLabel": "ლუკა", "text": "Backend-ზე ეს მარტივია, notifications ცხრილში read_at null-ებს დავთვლით. ოღონდ ცხრაზე მეტი თუ იქნება, 9+ ვაჩვენოთ." },
+        { "id": "s4", "startMs": 33800, "endMs": 41000, "speakerUserId": null, "speakerLabel": "ნინო", "text": "შევთანხმდით. Badge-ს გიორგი გააკეთებს, ლუკა query-ში დაეხმარება." },
+        { "id": "s5", "startMs": 41500, "endMs": 53900, "speakerUserId": null, "speakerLabel": "გიორგი", "text": "კიდევ ერთი: „ყველას წაკითხულად მონიშვნის“ ღილაკი გვჭირდება. ახლა თითო-თითოდ უნდა დააჭირო და ეს ძალიან მოსაწყენია." },
+        { "id": "s6", "startMs": 54300, "endMs": 63000, "speakerUserId": null, "speakerLabel": "ლუკა", "text": "ერთი server action-ით გავაკეთებ, მხოლოდ მიმდინარე მომხმარებლის შეტყობინებებზე. სხვის მონაცემებს არ შეეხება." },
+        { "id": "s7", "startMs": 63500, "endMs": 75800, "speakerUserId": null, "speakerLabel": "ნინო", "text": "Email notification-ებზეც იყო კითხვა. ჩემი აზრით, ამ ეტაპზე email-ს არ ვაგზავნით, მხოლოდ in-app. ამაზე თიქეთს არ ვქმნით." },
+        { "id": "s8", "startMs": 76200, "endMs": 84000, "speakerUserId": null, "speakerLabel": "გიორგი", "text": "თანახმა ვარ. Push notification-ებზე მოგვიანებით ვისაუბროთ, ჯერ არ ვიცით, საჭიროა თუ არა." }
+      ],
+      "tasks": [
+        {
+          "linearIssueUuid": "4f581fdf-6bb6-4e6b-be1f-f23428e3d833",
+          "title": "Show unread notification count badge in the sidebar",
+          "description": "Members cannot tell how many unread notifications they have. Show the unread count next to the Inbox link in the sidebar.",
+          "acceptanceCriteria": [
+            "The badge counts the signed-in user's unread notifications (read_at is null) for the current team.",
+            "Counts above 9 display as 9+.",
+            "The badge is hidden when nothing is unread.",
+            "Screen readers announce the count, for example \"3 unread\"."
+          ],
+          "evidenceSegmentIds": ["s2", "s3", "s4"]
+        },
+        {
+          "linearIssueUuid": "823dc05f-7ae3-456d-83bb-5bc3a7a6ac05",
+          "title": "Add a mark all as read action to the inbox",
+          "description": "Notifications can only be marked read one at a time. Add one action that marks all of the signed-in user's unread notifications in this team as read.",
+          "acceptanceCriteria": [
+            "A \"Mark all as read\" button appears in the Inbox when unread notifications exist.",
+            "One server action updates only the signed-in user's notifications for the current team.",
+            "The sidebar unread badge updates after the action completes."
+          ],
+          "evidenceSegmentIds": ["s5", "s6"]
+        }
+      ]
+    },
+    {
+      "id": "89972715-fbe5-43e6-aa13-5a6b961c5c1b",
+      "kind": "huddle",
+      "title": "Bug triage: Georgian transcript display",
+      "agenda": "",
+      "createdAt": "2026-10-15T10:20:00Z",
+      "startedAt": "2026-10-15T10:20:30Z",
+      "endedAt": "2026-10-15T10:31:00Z",
+      "summary": "QA reported three display problems in Georgian transcripts. The team agreed to fix overflow of long words on mobile, give each speaker a stable color, and show timestamps as mm:ss. Seeking to a timestamp waits for audio playback.",
+      "decisions": [
+        "Fix long-word overflow in the transcript on mobile.",
+        "Give each speaker a stable color while keeping the name visible.",
+        "Show segment timestamps as mm:ss.",
+        "Audio playback is not part of this sprint."
+      ],
+      "openQuestions": ["When will audio playback exist so timestamps can seek?"],
+      "segments": [
+        { "id": "s1", "startMs": 0, "endMs": 11200, "speakerUserId": null, "speakerLabel": "თამარი", "text": "Georgian transcript-ის ჩვენებაზე რამდენიმე bug შევაგროვე. პირველი: გრძელი ქართული სიტყვები mobile-ზე ეკრანიდან გადადის." },
+        { "id": "s2", "startMs": 11600, "endMs": 19800, "speakerUserId": null, "speakerLabel": "გიორგი", "text": "ვნახე, transcript-ის ბლოკზე overflow-wrap არ გვიწერია. მარტივად გასწორდება, დღესვე ავიღებ." },
+        { "id": "s3", "startMs": 20300, "endMs": 30100, "speakerUserId": null, "speakerLabel": "თამარი", "text": "მეორე: speaker-ები ვიზუალურად ერთმანეთისგან არ განსხვავდება. როცა სამი ადამიანი ლაპარაკობს, მიყოლა ძნელია." },
+        { "id": "s4", "startMs": 30600, "endMs": 39400, "speakerUserId": null, "speakerLabel": "ნინო", "text": "მოდი, თითოეულ speaker-ს თავისი ფერი მივცეთ, avatar-ის მსგავსად. ფერი მთელი შეხვედრის განმავლობაში ერთი და იგივე უნდა იყოს." },
+        { "id": "s5", "startMs": 39900, "endMs": 47200, "speakerUserId": null, "speakerLabel": "გიორგი", "text": "კარგი, ოღონდ მხოლოდ ფერს არ დავეყრდნოთ, სახელიც დარჩეს, accessibility-სთვის." },
+        { "id": "s6", "startMs": 47700, "endMs": 57500, "speakerUserId": null, "speakerLabel": "თამარი", "text": "მესამე: timestamp-ები წამებში ჩანს, ათწილადით. ასე წაკითხვა რთულია, წუთები და წამები ჯობია." },
+        { "id": "s7", "startMs": 58000, "endMs": 69300, "speakerUserId": null, "speakerLabel": "ლუკა", "text": "ფორმატი mm:ss-ზე გადავიყვანოთ, პატარა ცვლილებაა. Timestamp-ზე დაჭერით გადასვლა კი მოგვიანებით, audio playback ჯერ არ გვაქვს." },
+        { "id": "s8", "startMs": 69800, "endMs": 77000, "speakerUserId": null, "speakerLabel": "ნინო", "text": "შევთანხმდით: overflow, speaker-ების ფერები და mm:ss ფორმატი. Playback ამ sprint-ში არა." }
+      ],
+      "tasks": [
+        {
+          "linearIssueUuid": "d5a39355-2965-4796-bf0e-0ff6835a49b6",
+          "title": "Wrap long Georgian words in the transcript on mobile",
+          "description": "Long Georgian words overflow the screen on mobile because the transcript block has no overflow-wrap rule.",
+          "acceptanceCriteria": [
+            "No transcript segment overflows a 360px-wide viewport.",
+            "Checked with a long Georgian word sample at mobile width."
+          ],
+          "evidenceSegmentIds": ["s1", "s2"]
+        },
+        {
+          "linearIssueUuid": "217e6265-c20a-46fb-ad10-c2c6b4431539",
+          "title": "Give each transcript speaker a stable color",
+          "description": "Speakers are hard to tell apart when three people talk. Assign each speaker a color that stays the same for the whole meeting.",
+          "acceptanceCriteria": [
+            "Each speaker label gets a color derived deterministically from the label.",
+            "The speaker name stays visible; color is never the only cue.",
+            "Colors meet WCAG AA contrast in light and dark themes."
+          ],
+          "evidenceSegmentIds": ["s3", "s4", "s5"]
+        },
+        {
+          "linearIssueUuid": "76b4bbb9-5a26-4ca9-96ea-1e8cf01c98de",
+          "title": "Show transcript timestamps as mm:ss",
+          "description": "Segment times are shown as decimal seconds, which is hard to read. Show minutes and seconds instead. Seeking from a timestamp is out of scope until audio playback exists.",
+          "acceptanceCriteria": [
+            "Segment times render as mm:ss, for example 01:05.",
+            "Evidence quotes in task details use the same format."
+          ],
+          "evidenceSegmentIds": ["s6", "s7"]
+        }
+      ]
+    },
+    {
+      "id": "8aea3b70-de2a-4f67-b65a-aa11cbe82b50",
+      "kind": "scheduled",
+      "title": "Design review: audio upload flow",
+      "agenda": "Review the design for uploading recorded meetings.",
+      "scheduledStart": "2026-10-16T11:00:00Z",
+      "scheduledEnd": "2026-10-16T11:45:00Z",
+      "timezone": "Asia/Tbilisi",
+      "createdAt": "2026-10-15T18:00:00Z",
+      "startedAt": "2026-10-16T11:02:00Z",
+      "endedAt": "2026-10-16T11:16:00Z",
+      "summary": "The team reviewed the audio upload design. Uploads accept common audio and video formats up to 500 MB, go straight to storage through a signed URL, show progress, and then run the same pipeline as live calls. Importing from YouTube links is out of scope.",
+      "decisions": [
+        "Accept mp3, m4a, wav and mp4 files up to 500 MB.",
+        "Upload directly to Supabase Storage through a signed URL.",
+        "Uploads reuse the live-call processing pipeline.",
+        "No YouTube link import for now."
+      ],
+      "openQuestions": ["How long should uploaded audio be retained? Ask legal."],
+      "segments": [
+        { "id": "s1", "startMs": 0, "endMs": 10300, "speakerUserId": null, "speakerLabel": "ნინო", "text": "დღეს upload-ის flow-ს განვიხილავთ. ზოგ გუნდს Zoom-ის ჩანაწერი აქვს და უნდა, რომ ატვირთოს." },
+        { "id": "s2", "startMs": 10800, "endMs": 20500, "speakerUserId": null, "speakerLabel": "გიორგი", "text": "Design-ში drag and drop ზონაა. ფაილის ტიპებიდან mp3, m4a, wav და mp4 დავუშვათ." },
+        { "id": "s3", "startMs": 21000, "endMs": 31700, "speakerUserId": null, "speakerLabel": "ლუკა", "text": "ზომის ლიმიტი მჭირდება. მოდი 500 მეგაბაიტი იყოს. თუ მეტია, ატვირთვამდე ვუთხრათ მომხმარებელს." },
+        { "id": "s4", "startMs": 32200, "endMs": 39900, "speakerUserId": null, "speakerLabel": "ნინო", "text": "კარგი. ატვირთვისას progress bar უნდა ჩანდეს, თორემ ხალხი გვერდს დახურავს." },
+        { "id": "s5", "startMs": 40400, "endMs": 49800, "speakerUserId": null, "speakerLabel": "ლუკა", "text": "ფაილი პირდაპირ Supabase Storage-ში წავა signed URL-ით, ჩვენს server-ზე არ გაივლის." },
+        { "id": "s6", "startMs": 50300, "endMs": 59600, "speakerUserId": null, "speakerLabel": "გიორგი", "text": "ატვირთვის შემდეგ იგივე pipeline გაეშვება, რაც live call-ზე: transcript და ticket-ები ერთნაირად." },
+        { "id": "s7", "startMs": 60100, "endMs": 69000, "speakerUserId": null, "speakerLabel": "ნინო", "text": "YouTube-ის ლინკიდან იმპორტზეც მკითხეს. ამ ეტაპზე ამას არ ვაკეთებთ და თიქეთს არ ვქმნით." },
+        { "id": "s8", "startMs": 69500, "endMs": 78400, "speakerUserId": null, "speakerLabel": "ლუკა", "text": "ღია კითხვაა, რამდენ ხანს ვინახავთ ატვირთულ audio ფაილს. Retention-ზე legal-ს უნდა ვკითხოთ." }
+      ],
+      "tasks": [
+        {
+          "linearIssueUuid": "725f78d8-4345-43bc-ad04-e6366415da42",
+          "title": "Build drag-and-drop audio upload with type and size checks",
+          "description": "Teams want to upload recorded meetings. Add a drop zone that validates the file before upload and sends it straight to storage.",
+          "acceptanceCriteria": [
+            "The drop zone and file picker accept mp3, m4a, wav and mp4.",
+            "Files over 500 MB are rejected before the upload starts, with a clear message.",
+            "The file uploads directly to Supabase Storage through a signed URL and never passes through the app server."
+          ],
+          "evidenceSegmentIds": ["s2", "s3", "s5"]
+        },
+        {
+          "linearIssueUuid": "f132b459-ff5f-450f-b466-ea5e70f327d0",
+          "title": "Show upload progress and start processing when the upload finishes",
+          "description": "Show progress during upload so people keep the page open, then run the same transcript-to-Linear pipeline used for live calls.",
+          "acceptanceCriteria": [
+            "A progress bar shows the upload percentage.",
+            "A finished upload starts the same processing pipeline as a live call."
+          ],
+          "evidenceSegmentIds": ["s4", "s6"]
+        }
+      ]
+    }
+  ]
+}

@@ -40,7 +40,7 @@ export default async function TeamHomePage({ params }: { params: Promise<{ teamI
         </Suspense>
 
         <MeetingList title="Upcoming" teamId={teamId} meetings={meetings.upcoming} empty="No scheduled calls. Use Schedule call to book one." />
-        <MeetingList title="Recent" teamId={teamId} meetings={meetings.recent} empty="No meetings yet. Start a huddle to run your first one." />
+        <RecentCalls teamId={teamId} meetings={meetings.recent} />
       </PageBody>
     </>
   );
@@ -96,12 +96,54 @@ function MeetingList({ title, teamId, meetings, empty }: { title: string; teamId
               <Link href={`/teams/${teamId}/meetings/${m.id}`} className={`${rowClass} hover:bg-subtle`}>
                 <span aria-hidden className={`size-2 shrink-0 rounded-full ${STATUS_DOT[m.processingStatus] ?? "bg-muted/40"}`} />
                 <span className="min-w-0 flex-1 truncate font-medium">{m.title}</span>
-                <span className="hidden shrink-0 text-xs text-muted sm:inline">
-                  {m.kind === "scheduled" && m.scheduledStart && m.timezone
-                    ? `${formatInZone(m.scheduledStart, m.timezone)} · ${m.timezone}`
-                    : `${m.kind === "huddle" ? "Huddle" : "Upload"} · ${formatInZone(m.createdAt, "UTC")} UTC`}
-                </span>
+                <span className="hidden shrink-0 text-xs text-muted sm:inline">{whenLabel(m)}</span>
                 <span className={badgeClass}>{STATUS_LABEL[m.processingStatus]}</span>
+              </Link>
+            </li>
+          ))}
+        </ul>
+      )}
+    </section>
+  );
+}
+
+function whenLabel(m: MeetingSummary) {
+  return m.kind === "scheduled" && m.scheduledStart && m.timezone
+    ? `${formatInZone(m.scheduledStart, m.timezone)} · ${m.timezone}`
+    : `${m.kind === "huddle" ? "Huddle" : "Upload"} · ${formatInZone(m.createdAt, "UTC")} UTC`;
+}
+
+function RecentCalls({ teamId, meetings }: { teamId: string; meetings: MeetingSummary[] }) {
+  return (
+    <section aria-labelledby="recent-heading">
+      <SectionTitle id="recent-heading">
+        Recent calls {meetings.length > 0 && <span className="ml-1 tabular-nums">{meetings.length}</span>}
+      </SectionTitle>
+      {meetings.length === 0 ? (
+        <p className="rounded-lg border border-dashed border-border px-4 py-6 text-center text-muted">No meetings yet. Start a huddle to run your first one.</p>
+      ) : (
+        <ul className="grid gap-3 sm:grid-cols-2">
+          {meetings.map((m) => (
+            <li key={m.id}>
+              <Link
+                href={`/teams/${teamId}/meetings/${m.id}`}
+                className={`${cardClass} flex h-full flex-col gap-2 p-4 transition-colors hover:border-muted/50 hover:bg-subtle`}
+              >
+                <div className="flex items-center gap-2">
+                  <span aria-hidden className={`size-2 shrink-0 rounded-full ${STATUS_DOT[m.processingStatus] ?? "bg-muted/40"}`} />
+                  <span className="min-w-0 flex-1 truncate font-medium">{m.title}</span>
+                  <span className={badgeClass}>{STATUS_LABEL[m.processingStatus]}</span>
+                </div>
+                <p className="text-xs text-muted">{whenLabel(m)}</p>
+                {m.summary && <p className="line-clamp-3 text-muted">{m.summary}</p>}
+                {m.issueIdentifiers.length > 0 && (
+                  <p className="mt-auto flex flex-wrap items-center gap-1.5 pt-1">
+                    <span className="sr-only">Linear issues:</span>
+                    {m.issueIdentifiers.map((id) => (
+                      <span key={id} className={`${badgeClass} font-mono`}>{id}</span>
+                    ))}
+                  </p>
+                )}
               </Link>
             </li>
           ))}

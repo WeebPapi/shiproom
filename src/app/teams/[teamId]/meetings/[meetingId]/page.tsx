@@ -13,6 +13,7 @@ import { createClient } from "@/lib/supabase/server";
 import { formatInZone } from "@/lib/time";
 import type { CaptureStatus, ProcessingStatus, ExtractionResult, Transcript } from "@/lib/contracts";
 import { CallPanel } from "./call-panel";
+import { MockPrBuild, MockPrStatus } from "./mock-prs";
 
 type MeetingRow = {
   id: string;
@@ -135,11 +136,13 @@ export default async function MeetingPage({ params }: { params: Promise<{ teamId
               </div>
             )}
             {(tasks.data ?? []).length > 0 ? (
+              <MockPrBuild enabled={meeting.processing_status === "complete" && (tasks.data ?? []).some((task) => task.linear_issue_url)}>
               <ul className={`${cardClass} divide-y divide-border`}>
                 {(tasks.data ?? []).map((task) => (
                   <li key={task.id} className="px-4 py-3">
                     <div className="flex min-h-7 items-center gap-3">
                       <span className="min-w-0 flex-1 font-medium">{task.payload.title ?? `Task ${task.ordinal}`}</span>
+                      {task.linear_issue_url && <MockPrStatus ordinal={task.ordinal} />}
                       {task.linear_issue_url && <span className={badgeClass}>{task.payload.existingLinearIssueId ? "Updated" : "Created"}</span>}
                     {task.linear_issue_url ? (
                       <a
@@ -182,6 +185,7 @@ export default async function MeetingPage({ params }: { params: Promise<{ teamId
                   </li>
                 ))}
               </ul>
+              </MockPrBuild>
             ) : (
               <p className="rounded-lg border border-dashed border-border px-4 py-6 text-center text-muted">No tasks yet.</p>
             )}

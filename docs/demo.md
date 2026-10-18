@@ -10,6 +10,14 @@ Daily accepted the Nova-3/Georgian room settings and vocabulary/diarization opti
 
 Browser checks confirmed an inbox recap for a zero-task synthetic meeting, English notes, and an expandable original Georgian transcript with two speaker labels/timestamps. The temporary fixture was removed afterward; the prepared live meeting remains unstarted. Verification: 52 tests, typecheck, lint, production build, and `git diff --check` passed on Node 22.13.1; the Node 24 target was not exercised.
 
+## Seeded past meetings
+
+`node --env-file=.env.local scripts/seed-demo.mjs` adds three completed meetings to the demo app team so Home shows result cards: *Sprint planning: inbox notifications* (SHI-2, SHI-3), *Bug triage: Georgian transcript display* (SHI-4 to SHI-6), and *Design review: audio upload flow* (SHI-7, SHI-8). Each has a synthetic Georgian transcript with three fictional speakers, English notes, and real issues in the Shiproom Demo project, plus unread inbox notifications for the team owner. They were written by hand, not produced by a call or Claude; each Linear issue says so. Use them to show history and results, not as live-capture evidence. Rerunning the script updates the same rows and issues.
+
+## Mocked "Build into PRs"
+
+A completed meeting with published issues shows **Build into PRs** above its task list. It is a client-side visual mock for the recording: each published task shows *Building PR…*, then after about 3–5 seconds (staggered) a PR icon and a made-up number (`#40 + task ordinal`). Nothing is generated, nothing is written to GitHub, the number is not a link, and the state resets on refresh. The button's tooltip says it is a demo mock. Say so in the video if it is shown.
+
 ## Human live check
 
 1. Open the prepared meeting. Confirm Georgian, the public repository, and Shiproom Demo project. Accept transcription and click **Start call**. Join Daily with your microphone. Wait for transcription to start; a partial-microphone fallback is not a passed capture check.

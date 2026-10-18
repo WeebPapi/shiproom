@@ -12,9 +12,11 @@ export type MeetingSummary = {
   captureStatus: CaptureStatus;
   processingStatus: ProcessingStatus;
   createdAt: string;
+  summary: string | null;
+  issueIdentifiers: string[];
 };
 
-const COLUMNS = "id, kind, title, scheduled_start, scheduled_end, timezone, capture_status, processing_status, created_at";
+const COLUMNS = "id, kind, title, scheduled_start, scheduled_end, timezone, capture_status, processing_status, created_at, summary";
 
 type Row = {
   id: string;
@@ -26,9 +28,10 @@ type Row = {
   capture_status: CaptureStatus;
   processing_status: ProcessingStatus;
   created_at: string;
+  summary: string | null;
 };
 
-const toSummary = (r: Row): MeetingSummary => ({
+const toSummary = (r: Row, issueIdentifiers: string[] = []): MeetingSummary => ({
   id: r.id,
   kind: r.kind,
   title: r.title,
@@ -38,6 +41,8 @@ const toSummary = (r: Row): MeetingSummary => ({
   captureStatus: r.capture_status,
   processingStatus: r.processing_status,
   createdAt: r.created_at,
+  summary: r.summary,
+  issueIdentifiers,
 });
 
 /** Caller must already have verified membership; RLS enforces it again. */
@@ -57,7 +62,16 @@ export async function listTeamMeetings(teamId: string) {
   ]);
   if (upcoming.error) throw upcoming.error;
   if (recent.error) throw recent.error;
-  return { upcoming: (upcoming.data as Row[]).map(toSummary), recent: (recent.data as Row[]).map(toSummary) };
+  const recentRows = recent.data as Row[];
+  const tasks = await supabase
+    .from("tasks")
+    .select("meeting_id, linear_issue_identifier")
+    .in("meeting_id", recentRows.map((r) => r.id))
+    .not("linear_issue_identifier", "is", null)
+    .order("ordinal");
+  if (tasks.error) throw tasks.error;
+  const issuesFor = (id: string) => tasks.data.filter((t) => t.meeting_id === id).map((t) => t.linear_issue_identifier as string);
+  return { upcoming: (upcoming.data as Row[]).map((r) => toSummary(r)), recent: recentRows.map((r) => toSummary(r, issuesFor(r.id))) };
 }
 
 export async function listTeamMembers(teamId: string) {

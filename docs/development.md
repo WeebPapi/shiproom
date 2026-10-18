@@ -24,6 +24,7 @@ npm run dev        # http://localhost:3000
 | `npm run typecheck` | `tsc --noEmit` | Passed |
 | `npm run lint` | ESLint (Next.js config) | Passed |
 | `npm test` | Vitest: contracts, OAuth callback handling, public GitHub API failures, crypto, timezone conversion, and RLS against the migrations in PGlite | 37 passed |
+| `node --env-file=.env.local scripts/seed-demo.mjs` | Seeds three synthetic Georgian meetings into the `LINEAR_DEMO_TEAM_ID` app team and creates their real issues in the Linear Shiproom Demo project. Rerunnable (fixed IDs) | Ran 2026-10-18; rerun created no duplicates |
 
 Without `NEXT_PUBLIC_SUPABASE_URL`/`NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` the app shows "Shiproom isn't configured yet" instead of crashing. Missing server keys produce explicit "not configured" states (Connections page → Server setup), never fake success. There is no local Inngest server yet; the workflow lane adds it with `/api/inngest`.
 
@@ -83,6 +84,8 @@ Documentation guidance lives in both [AGENTS.md](../AGENTS.md) and [CLAUDE.md](.
 ## Evidence and demo data
 
 Use invented participant names and synthetic audio/transcripts in committed fixtures. Reference acceptance IDs AC1-AC9 from [Product](product.md) in verification notes, including native-speaker review for the Georgian target. Keep real-workspace smoke-test evidence brief: date, commit, provider behavior checked, result, and any limit; do not copy sensitive payloads into the repo.
+
+The demo seed ([scripts/demo-meetings.json](../scripts/demo-meetings.json)) is invented Georgian dialogue with fictional speakers; `scripts/demo-meetings.test.ts` checks it against the transcript/extraction contracts. Its Linear issues state that the transcript is a synthetic seed, not a recorded call.
 
 The public demo must disclose preconfigured connections, public-only GitHub context, upload-only capture, or any other scope reduction that remains. The spec describes the intended product; status documents what the current build can actually do.
 
