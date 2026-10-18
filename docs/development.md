@@ -74,7 +74,7 @@ Provider status is in [Setup](setup.md#agent-visible-status). Daily room creatio
 
 For the preconfigured personal-key demo, set `LINEAR_DEMO_TEAM_ID` to the single authorized Shiproom app team ID in ignored `.env.local` alongside `LINEAR_API_KEY`. Other teams do not inherit that key. OAuth remains the normal connected-team path. The recording walkthrough and precise live gates are in [Demo checks](demo.md).
 
-Current transcription settings come from `src/lib/transcription.ts` and the shared vocabulary catalog: Nova-3, saved meeting language (new meetings default to Georgian), separate keyterms, and requested diarization. Claude requests English output; original transcript evidence is retained. The meeting result includes a full transcript and inbox recap. A partial fallback cannot create issues; the organizer can retry processing, including after refreshing the ended meeting.
+Current transcription settings come from `src/lib/transcription.ts` and the shared vocabulary catalog: Nova-3, saved meeting language (new meetings default to Georgian), separate keyterms, and requested diarization. Claude requests English output; original transcript evidence is retained. The meeting result includes a full transcript and inbox recap. Daily live captions can create issues when the stored file is missing. Browser microphone capture cannot; the organizer can retry processing, including after refreshing the ended meeting.
 
 1. Check the current working tree and read the code/documents touched by the task. Identify the owning lane and shared contracts before editing.
 2. Implement a small complete slice, including authorization and failure handling. Preserve other developers' uncommitted work.

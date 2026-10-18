@@ -147,7 +147,8 @@ async function captureTranscript(meetingId: string, roomName: string, capture: L
   }
   const clientCues: Cue[] = capture.segments;
   if (clientCues.length > 0 && capture.origin === "daily-live") {
-    const transcript = toTranscript({ meetingId, language, source: "daily", complete: false, cues: clientCues });
+    // Daily often never writes a VTT for short calls; these captions are the same stream.
+    const transcript = toTranscript({ meetingId, language, source: "daily", complete: true, cues: clientCues });
     if (isTranscript(transcript)) return { transcript, kind: "daily-live", providerId: null };
   }
   if (clientCues.length > 0 && capture.origin === "browser") {
@@ -318,11 +319,15 @@ export async function finishMeetingCall(input: {
   if (transcriptError) return emptyFinish("The saved transcript could not be loaded. No issues were changed.");
   const parsedTranscript = savedTranscript?.complete ? transcriptSchema.safeParse({ ...savedTranscript, meetingId: input.meetingId }) : null;
   if (parsedTranscript && !parsedTranscript.success) return emptyFinish("The saved transcript is invalid. No issues were changed.");
-  const captured = parsedTranscript?.success
+  let captured = parsedTranscript?.success
     ? { transcript: parsedTranscript.data, kind: input.isDemo ? "demo" as const : "daily-stored" as const, providerId: null }
     : input.isDemo
       ? { transcript: demoTranscript(input.meetingId), kind: "demo" as const, providerId: null }
       : await captureTranscript(input.meetingId, input.roomName, input.capture, meeting.language);
+  if ("error" in captured && savedTranscript?.source === "daily") {
+    const reused = transcriptSchema.safeParse({ ...savedTranscript, meetingId: input.meetingId, complete: true });
+    if (reused.success) captured = { transcript: reused.data, kind: "daily-live" as const, providerId: null };
+  }
   if ("error" in captured) {
     await patchMeeting(admin, input.meetingId, { capture_status: "failed", processing_status: "failed", error_stage: "transcript", error_message: captured.error });
     revalidatePath(`/teams/${input.teamId}/meetings/${input.meetingId}`);

@@ -230,7 +230,7 @@ export default async function MeetingPage({ params }: { params: Promise<{ teamId
             <section aria-labelledby="transcript-heading" className="space-y-3">
               <SectionTitle id="transcript-heading">Transcript</SectionTitle>
               <p className="text-xs text-muted">
-                Original {transcript.data.language === "ka" ? "Georgian" : "English"} · {transcript.data.complete ? "Full stored transcript" : "Partial capture — not used to create issues"}
+                Original {transcript.data.language === "ka" ? "Georgian" : "English"} · {transcript.data.complete ? "Daily transcript" : "Browser capture — not used to create issues"}
               </p>
               <details className={cardClass}>
                 <summary className="cursor-pointer px-4 py-3 font-medium">Read transcript ({transcript.data.segments.length} segments)</summary>

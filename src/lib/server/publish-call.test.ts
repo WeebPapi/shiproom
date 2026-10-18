@@ -176,6 +176,43 @@ it("does not extract or publish from a partial microphone transcript", async () 
   expect(provider).not.toHaveBeenCalled();
 });
 
+it("uses Daily live captions when the stored file is missing", async () => {
+  mocks.stored.mockResolvedValue({ empty: true });
+  vi.stubGlobal("fetch", vi.fn());
+  const result = await finishMeetingCall({
+    teamId,
+    meetingId,
+    organizerId: "organizer",
+    roomName: "room",
+    isDemo: false,
+    capture: {
+      teamId,
+      meetingId,
+      origin: "daily-live",
+      consented: true,
+      segments: [{ speakerLabel: "Speaker c684", text: "შევთანხმდით.", startMs: 11500, endMs: 11500 }],
+    },
+  });
+  expect(result.error).not.toContain("partial transcript");
+  expect(rows.transcripts[0]).toMatchObject({ source: "daily", complete: true });
+});
+
+it("retries from saved Daily live captions after a refresh", async () => {
+  mocks.stored.mockResolvedValue({ empty: true });
+  rows.transcripts.push({
+    team_id: teamId,
+    meeting_id: meetingId,
+    revision: 1,
+    source: "daily",
+    language: "ka",
+    complete: false,
+    segments: [{ id: "seg-0001", startMs: 11500, endMs: 11500, speakerUserId: null, speakerLabel: "Speaker c684", text: "შევთანხმდით." }],
+  });
+  vi.stubGlobal("fetch", vi.fn());
+  const result = await finishMeetingCall({ teamId, meetingId, organizerId: "organizer", roomName: "room", isDemo: false, capture: { teamId, meetingId, origin: "browser", consented: true, segments: [] } });
+  expect(result.error).not.toMatch(/partial transcript|No speech was captured/);
+});
+
 it("revalidates saved project IDs before any source or publication request", async () => {
   rows.meetings[0].linear_project_id = "unapproved-project";
   const provider = vi.fn();

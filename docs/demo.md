@@ -25,7 +25,7 @@ A newly created Linear issue is delegated to the Cursor agent in the connected w
 
    > შევთანხმდით, რომ repository picker-ს დავამატოთ loading და empty state. სანამ რეპოზიტორიები იტვირთება, ვაჩვენოთ loading indicator. თუ რეპოზიტორიები არ არის, ვაჩვენოთ ცარიელი მდგომარეობის შეტყობინება. Private repository ამ ეტაპზე არ გვჭირდება და ამაზე თიქეთი არ შევქმნათ.
 
-3. Organizer clicks **End and send to Linear**. Keep the page open during this synchronous processing request. It creates or updates real issues in the dedicated demo project. If Daily's file is still finalizing, **Retry processing** retrieves it again; partial captions or local microphone capture never create issues.
+3. Organizer clicks **End and send to Linear**. Keep the page open during this synchronous processing request. It creates or updates real issues in the dedicated demo project. If Daily's file is still finalizing, **Retry processing** retrieves it again. Daily live captions can create issues when that file is missing; local microphone capture never does.
 4. Verify the original Georgian transcript, speaker labels, and timestamps. Review negation and technical terms as a native speaker. English notes must contain the summary, decisions, and open questions; English tickets must match only agreed work and link to original evidence.
 5. Follow each Linear link: verify the team/project, `[shiproom]` prefix, acceptance criteria, Georgian evidence, source repo, and authenticated meeting link. Open **Inbox** as each participant, including an early leaver: a meeting recap links to notes/transcript/issues, and created tasks have separate unread notifications. Refresh the result to check persistence. A visible inbox refreshes every ten seconds.
 
