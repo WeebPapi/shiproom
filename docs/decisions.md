@@ -92,6 +92,8 @@ If billing or setup blocks a provider, use the relevant documented fallback and 
 
 ## Change and verification log
 
+- **2026-10-18 — post-call context picker:** `needs_context` previously showed “choose a repository and Linear team” with no form. The organizer can now pick an approved repo and connected Linear team/project on the meeting result and resume from the saved transcript. Inference is still unimplemented. Authenticated grants still cannot update context columns, so the write uses service_role after the organizer check. Browser visual QA of the picker was not run in this change.
+
 - **2026-10-18 — Daily live captions on short calls:** “partial” meant Daily returned no stored VTT, not that the call was too short. Short test calls often never get that file, so processing now uses Daily live captions when storage is empty and can retry from a saved Daily transcript after refresh. Browser microphone capture still cannot publish. Live Linear publication from a tiny call was not re-run in this change.
 
 - **2026-10-18 — stored Daily transcript retrieval:** live Georgian captions were being saved as partial and blocking Linear because `fetchStoredTranscript` required `isVttAvailable` on the list payload. Daily’s documented `t_finished` example omits that field, so a finished file looked missing. Retrieval now queries by room UUID and treats `t_finished` as ready unless `isVttAvailable` is explicitly false. Partial live captions still cannot publish; Retry processing can pick up the stored file. Live Daily download was not re-run in this change.

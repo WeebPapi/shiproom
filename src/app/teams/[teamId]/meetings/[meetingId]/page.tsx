@@ -16,6 +16,7 @@ import { formatInZone } from "@/lib/time";
 import type { CaptureStatus, ProcessingStatus, ExtractionResult, Transcript } from "@/lib/contracts";
 import { DEMO_NOTE, DEMO_SEGMENTS } from "@/lib/demo";
 import { CallPanel } from "./call-panel";
+import { ChooseContextForm } from "./choose-context-form";
 import { CursorWorkBadge, CursorWorkPoll } from "./cursor-work";
 import { RefreshPage } from "@/components/refresh-page";
 
@@ -61,8 +62,9 @@ export default async function MeetingPage({ params }: { params: Promise<{ teamId
     .maybeSingle<MeetingRow>();
   if (!meeting) notFound();
 
+  const pickContext = meeting.processing_status === "needs_context" && !meeting.is_demo;
   // Not awaited: the Linear API is slow, so only its two properties wait for it.
-  const linear = meeting.linear_team_id ? getLinearOptions(teamId) : Promise.resolve(null);
+  const linear = meeting.linear_team_id || pickContext ? getLinearOptions(teamId) : Promise.resolve(null);
   const [invitees, tasks, repositories, transcript] = await Promise.all([
     supabase.from("meeting_invitees").select("user_id, profile:profiles(display_name, github_login)").eq("meeting_id", meetingId),
     supabase
@@ -156,6 +158,17 @@ export default async function MeetingPage({ params }: { params: Promise<{ teamId
               <p role="alert" className="rounded-md border border-danger/30 bg-danger/5 px-3 py-2 text-danger">
                 {meeting.error_message}
               </p>
+            )}
+            {pickContext && meeting.organizer_id === user.id && (
+              <ChooseContextForm
+                teamId={teamId}
+                meetingId={meeting.id}
+                repositories={repositories}
+                linear={linear}
+                githubRepositoryId={meeting.github_repository_id}
+                linearTeamId={meeting.linear_team_id}
+                linearProjectId={meeting.linear_project_id}
+              />
             )}
             {meeting.summary && <p className="leading-relaxed">{meeting.summary}</p>}
             {meeting.decisions.length > 0 && (

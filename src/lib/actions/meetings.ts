@@ -1,11 +1,13 @@
 "use server";
 
 import { redirect } from "next/navigation";
-import { contextModeFor, meetingInputSchema } from "@/lib/contracts";
+import { z } from "zod";
+import { contextModeFor, contextSelectionSchema, meetingInputSchema } from "@/lib/contracts";
 import { findMembership } from "@/lib/server/auth";
 import { getLinearOptions } from "@/lib/server/connections";
+import { finishMeetingCall } from "@/lib/server/publish-call";
 import { isValidTimeZone, zonedLocalToUtc } from "@/lib/time";
-import { createClient } from "@/lib/supabase/server";
+import { createAdminClient, createClient } from "@/lib/supabase/server";
 import { fromZodError, type ActionState } from "./state";
 
 const MAX_SCHEDULE_AHEAD_MS = 366 * 86_400_000;
@@ -105,4 +107,85 @@ export async function createMeeting(_prev: ActionState, formData: FormData): Pro
   if (inviteError) console.error("meeting invitee insert failed", inviteError);
 
   redirect(`/teams/${meeting.teamId}/meetings/${created.id}`);
+}
+
+export async function chooseMeetingContext(_prev: ActionState, formData: FormData): Promise<ActionState> {
+  const teamId = String(formData.get("teamId") ?? "");
+  const meetingId = String(formData.get("meetingId") ?? "");
+  if (!z.uuid().safeParse(teamId).success || !z.uuid().safeParse(meetingId).success) return { error: "That meeting could not be loaded." };
+  const context = contextSelectionSchema.safeParse({
+    githubRepositoryId: orNull(formData.get("githubRepositoryId")),
+    linearTeamId: orNull(formData.get("linearTeamId")),
+    linearProjectId: orNull(formData.get("linearProjectId")),
+  });
+  if (!context.success) return fromZodError(context.error);
+  if (!context.data.githubRepositoryId || !context.data.linearTeamId) {
+    return {
+      error: "Choose a repository and Linear team.",
+      fieldErrors: {
+        ...(context.data.githubRepositoryId ? {} : { "context.githubRepositoryId": ["Choose a repository approved for this team."] }),
+        ...(context.data.linearTeamId ? {} : { "context.linearTeamId": ["Choose a Linear team from the connected workspace."] }),
+      },
+    };
+  }
+
+  const access = await findMembership(teamId);
+  if (!access) return { error: "You are not a member of this team." };
+  const supabase = await createClient();
+  const { data: meeting } = await supabase
+    .from("meetings")
+    .select("organizer_id, processing_status, is_demo, daily_room_name")
+    .eq("id", meetingId)
+    .eq("team_id", teamId)
+    .maybeSingle();
+  if (!meeting) return { error: "That meeting is not on this team." };
+  if (meeting.organizer_id !== access.user.id) return { error: "Only the organizer can choose meeting context." };
+  if (meeting.is_demo) return { error: "Scripted demo meetings use a fixed destination." };
+  if (meeting.processing_status !== "needs_context") return { error: "This meeting is not waiting for context." };
+
+  const { data: repo } = await supabase
+    .from("team_repositories")
+    .select("github_repository_id")
+    .eq("team_id", teamId)
+    .eq("github_repository_id", context.data.githubRepositoryId)
+    .maybeSingle();
+  if (!repo) return { fieldErrors: { "context.githubRepositoryId": ["Choose a repository approved for this team."] } };
+  const linear = await getLinearOptions(teamId);
+  if (linear.status !== "ready") return { fieldErrors: { "context.linearTeamId": ["Connect Linear before choosing a team."] } };
+  const team = linear.teams.find((item) => item.id === context.data.linearTeamId);
+  if (!team) return { fieldErrors: { "context.linearTeamId": ["Choose a Linear team from the connected workspace."] } };
+  if (context.data.linearProjectId && !team.projects.some((project) => project.id === context.data.linearProjectId)) {
+    return { fieldErrors: { "context.linearProjectId": ["That project doesn't belong to the chosen Linear team."] } };
+  }
+
+  const admin = createAdminClient();
+  if (!admin) return { error: "The meeting cannot be saved yet. Ask the team owner to finish setup." };
+  // shortcut: authenticated grants omit context columns, upgrade with a migration that allows organizer updates.
+  const { error } = await admin
+    .from("meetings")
+    .update({
+      context_mode: contextModeFor(context.data),
+      github_repository_id: context.data.githubRepositoryId,
+      github_repository_provenance: "user",
+      linear_team_id: context.data.linearTeamId,
+      linear_team_provenance: "user",
+      linear_project_id: context.data.linearProjectId,
+      linear_project_provenance: context.data.linearProjectId ? "user" : null,
+    })
+    .eq("id", meetingId)
+    .eq("team_id", teamId);
+  if (error) {
+    console.error("meeting context update failed", error.message);
+    return { error: "The meeting context could not be saved. Try again." };
+  }
+
+  await finishMeetingCall({
+    teamId,
+    meetingId,
+    organizerId: access.user.id,
+    roomName: meeting.daily_room_name || `sr${meetingId.replaceAll("-", "")}`,
+    isDemo: false,
+    capture: { teamId, meetingId, origin: "daily-live", consented: true, segments: [] },
+  });
+  redirect(`/teams/${teamId}/meetings/${meetingId}`);
 }
