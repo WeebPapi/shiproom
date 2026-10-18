@@ -3,7 +3,7 @@
 import { useEffect } from "react";
 import { useRouter } from "next/navigation";
 
-export function RefreshInbox() {
+export function RefreshPage() {
   const router = useRouter();
   useEffect(() => {
     const timer = setInterval(() => { if (document.visibilityState === "visible") router.refresh(); }, 10_000);

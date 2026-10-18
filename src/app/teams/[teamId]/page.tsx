@@ -8,6 +8,7 @@ import { getLinearOptions, listTeamRepositories, type LinearOptionsState } from 
 import { listTeamMeetings, listTeamMembers, STATUS_LABEL, type MeetingSummary } from "@/lib/server/meetings";
 import { formatInZone } from "@/lib/time";
 import { MeetingDialog } from "./meeting-dialog";
+import { RefreshPage } from "@/components/refresh-page";
 
 const STATUS_DOT: Partial<Record<MeetingSummary["processingStatus"], string>> = {
   complete: "bg-success",
@@ -25,6 +26,7 @@ export default async function TeamHomePage({ params }: { params: Promise<{ teamI
 
   return (
     <>
+      <RefreshPage />
       <PageHeader title="Home">
         <MeetingDialog
           teamId={teamId}
@@ -39,6 +41,7 @@ export default async function TeamHomePage({ params }: { params: Promise<{ teamI
           <SetupChecklist teamId={teamId} linear={linear} hasRepository={repositories.length > 0} hasTeammates={members.length > 1} />
         </Suspense>
 
+        <MeetingList title="Live now" teamId={teamId} meetings={meetings.live} empty="No calls are live right now." />
         <MeetingList title="Upcoming" teamId={teamId} meetings={meetings.upcoming} empty="No scheduled calls. Use Schedule call to book one." />
         <RecentCalls teamId={teamId} meetings={meetings.recent} />
       </PageBody>
@@ -82,9 +85,10 @@ async function SetupChecklist(props: { teamId: string; linear: Promise<LinearOpt
 }
 
 function MeetingList({ title, teamId, meetings, empty }: { title: string; teamId: string; meetings: MeetingSummary[]; empty: string }) {
+  const headingId = `${title.replaceAll(" ", "-")}-heading`;
   return (
-    <section aria-labelledby={`${title}-heading`}>
-      <SectionTitle id={`${title}-heading`}>
+    <section aria-labelledby={headingId}>
+      <SectionTitle id={headingId}>
         {title} {meetings.length > 0 && <span className="ml-1 tabular-nums">{meetings.length}</span>}
       </SectionTitle>
       {meetings.length === 0 ? (
@@ -94,10 +98,10 @@ function MeetingList({ title, teamId, meetings, empty }: { title: string; teamId
           {meetings.map((m) => (
             <li key={m.id}>
               <Link href={`/teams/${teamId}/meetings/${m.id}`} className={`${rowClass} hover:bg-subtle`}>
-                <span aria-hidden className={`size-2 shrink-0 rounded-full ${STATUS_DOT[m.processingStatus] ?? "bg-muted/40"}`} />
+                <span aria-hidden className={`size-2 shrink-0 rounded-full ${m.captureStatus === "live" ? "bg-success" : STATUS_DOT[m.processingStatus] ?? "bg-muted/40"}`} />
                 <span className="min-w-0 flex-1 truncate font-medium">{m.title}</span>
                 <span className="hidden shrink-0 text-xs text-muted sm:inline">{whenLabel(m)}</span>
-                <span className={badgeClass}>{STATUS_LABEL[m.processingStatus]}</span>
+                <span className={badgeClass}>{m.captureStatus === "live" ? "Join call" : STATUS_LABEL[m.processingStatus]}</span>
               </Link>
             </li>
           ))}
@@ -130,9 +134,9 @@ function RecentCalls({ teamId, meetings }: { teamId: string; meetings: MeetingSu
                 className={`${cardClass} flex h-full flex-col gap-2 p-4 transition-colors hover:border-muted/50 hover:bg-subtle`}
               >
                 <div className="flex items-center gap-2">
-                  <span aria-hidden className={`size-2 shrink-0 rounded-full ${STATUS_DOT[m.processingStatus] ?? "bg-muted/40"}`} />
+                  <span aria-hidden className={`size-2 shrink-0 rounded-full ${m.captureStatus === "live" ? "bg-success" : STATUS_DOT[m.processingStatus] ?? "bg-muted/40"}`} />
                   <span className="min-w-0 flex-1 truncate font-medium">{m.title}</span>
-                  <span className={badgeClass}>{STATUS_LABEL[m.processingStatus]}</span>
+                  <span className={badgeClass}>{m.captureStatus === "live" ? "Join call" : STATUS_LABEL[m.processingStatus]}</span>
                 </div>
                 <p className="text-xs text-muted">{whenLabel(m)}</p>
                 {m.summary && <p className="line-clamp-3 text-muted">{m.summary}</p>}

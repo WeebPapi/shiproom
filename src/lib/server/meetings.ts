@@ -49,7 +49,8 @@ const toSummary = (r: Row, issueIdentifiers: string[] = []): MeetingSummary => (
 export async function listTeamMeetings(teamId: string) {
   const supabase = await createClient();
   const now = new Date().toISOString();
-  const [upcoming, recent] = await Promise.all([
+  const [live, upcoming, recent] = await Promise.all([
+    supabase.from("meetings").select(COLUMNS).eq("team_id", teamId).eq("capture_status", "live").is("ended_at", null).order("started_at", { ascending: false }).limit(20),
     supabase
       .from("meetings")
       .select(COLUMNS)
@@ -60,6 +61,7 @@ export async function listTeamMeetings(teamId: string) {
       .limit(20),
     supabase.from("meetings").select(COLUMNS).eq("team_id", teamId).order("created_at", { ascending: false }).limit(20),
   ]);
+  if (live.error) throw live.error;
   if (upcoming.error) throw upcoming.error;
   if (recent.error) throw recent.error;
   const recentRows = recent.data as Row[];
@@ -71,7 +73,7 @@ export async function listTeamMeetings(teamId: string) {
     .order("ordinal");
   if (tasks.error) throw tasks.error;
   const issuesFor = (id: string) => tasks.data.filter((t) => t.meeting_id === id).map((t) => t.linear_issue_identifier as string);
-  return { upcoming: (upcoming.data as Row[]).map((r) => toSummary(r)), recent: recentRows.map((r) => toSummary(r, issuesFor(r.id))) };
+  return { live: (live.data as Row[]).map((r) => toSummary(r)), upcoming: (upcoming.data as Row[]).map((r) => toSummary(r)), recent: recentRows.map((r) => toSummary(r, issuesFor(r.id))) };
 }
 
 export async function listTeamMembers(teamId: string) {

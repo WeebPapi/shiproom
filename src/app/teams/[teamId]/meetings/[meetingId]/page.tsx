@@ -17,6 +17,7 @@ import type { CaptureStatus, ProcessingStatus, ExtractionResult, Transcript } fr
 import { DEMO_NOTE, DEMO_SEGMENTS } from "@/lib/demo";
 import { CallPanel } from "./call-panel";
 import { CursorWorkBadge, CursorWorkPoll } from "./cursor-work";
+import { RefreshPage } from "@/components/refresh-page";
 
 type MeetingRow = {
   id: string;
@@ -89,6 +90,7 @@ export default async function MeetingPage({ params }: { params: Promise<{ teamId
 
   return (
     <>
+      {!meeting.ended_at && meeting.kind !== "upload" && <RefreshPage />}
       <PageHeader
         title={
           <>
@@ -127,6 +129,7 @@ export default async function MeetingPage({ params }: { params: Promise<{ teamId
                   language={meeting.language}
                   ended={Boolean(meeting.ended_at)}
                   isDemo={meeting.is_demo}
+                  live={meeting.capture_status === "live"}
                 />
               )}
             </div>

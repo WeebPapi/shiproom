@@ -22,16 +22,20 @@ export async function startMeetingCall(input: { teamId: string; meetingId: strin
   const supabase = await createClient();
   const { data: meeting } = await supabase
     .from("meetings")
-    .select("id, organizer_id, kind, language, github_repository_id, linear_team_id, linear_project_id, ended_at, is_demo")
+    .select("id, organizer_id, kind, language, github_repository_id, linear_team_id, linear_project_id, daily_room_name, started_at, ended_at, is_demo")
     .eq("id", parsed.data.meetingId)
     .eq("team_id", parsed.data.teamId)
     .maybeSingle();
   if (!meeting) return { error: "That meeting is not on this team." };
   if (meeting.kind === "upload") return { error: "This meeting is an upload, not a call." };
   if (meeting.ended_at) return { error: "This call has ended. Open its meeting result instead." };
-  const [repositories, linear] = await Promise.all([listTeamRepositories(parsed.data.teamId), getLinearOptions(parsed.data.teamId)]);
+  const isOrganizer = meeting.organizer_id === access.user.id;
+  if (!isOrganizer && !meeting.daily_room_name) return { error: "The organizer has not started this call yet." };
+  const [repositories, linear] = isOrganizer
+    ? await Promise.all([listTeamRepositories(parsed.data.teamId), getLinearOptions(parsed.data.teamId)])
+    : [[], null];
   const repository = repositories.find((repo) => repo.id === meeting.github_repository_id);
-  const team = linear.status === "ready" ? linear.teams.find((team) => team.id === meeting.linear_team_id) : undefined;
+  const team = linear?.status === "ready" ? linear.teams.find((team) => team.id === meeting.linear_team_id) : undefined;
   const project = team?.projects.find((project) => project.id === meeting.linear_project_id);
 
   return openMeetingCall({
@@ -39,10 +43,12 @@ export async function startMeetingCall(input: { teamId: string; meetingId: strin
     meetingId: parsed.data.meetingId,
     userId: access.user.id,
     displayName: access.user.displayName,
-    isOrganizer: meeting.organizer_id === access.user.id,
+    isOrganizer,
     language: meeting.language,
     contextNames: [repository?.fullName, team?.name, project?.name].filter((name): name is string => Boolean(name)),
     isDemo: meeting.is_demo === true,
+    roomName: meeting.daily_room_name,
+    startedAt: meeting.started_at,
   });
 }
 

@@ -16,7 +16,7 @@ type SpeechRec = {
   stop: () => void;
 };
 
-export function CallPanel(props: { teamId: string; meetingId: string; isOrganizer: boolean; dailyReady: boolean; language: "en" | "ka"; ended: boolean; isDemo: boolean }) {
+export function CallPanel(props: { teamId: string; meetingId: string; isOrganizer: boolean; dailyReady: boolean; language: "en" | "ka"; ended: boolean; isDemo: boolean; live: boolean }) {
   const router = useRouter();
   const containerRef = useRef<HTMLDivElement>(null);
   const frameRef = useRef<{ leave: () => Promise<unknown>; destroy: () => void; stopTranscription: () => void } | null>(null);
@@ -135,7 +135,7 @@ export function CallPanel(props: { teamId: string; meetingId: string; isOrganize
       {!props.isDemo && <p className="text-muted">{props.language === "ka" ? "Georgian" : "English"} transcript with speaker labels. Meeting notes and Linear tickets are generated in English.</p>}
       <p role="status" className="flex items-center gap-2 text-xs text-muted">
         <span aria-hidden className={`size-1.5 rounded-full ${join ? "bg-success" : "bg-muted/40"}`} />
-        {status}
+        {!join && !result && !props.ended && !callEnded ? props.live ? "Call live. Join when you're ready." : props.isOrganizer ? "Ready to start" : "Waiting for the organizer to start the call." : status}
       </p>
       {error && <p role="alert" className="text-danger">{error}</p>}
       {!join && !result && !props.ended && !callEnded && (
@@ -150,8 +150,8 @@ export function CallPanel(props: { teamId: string; meetingId: string; isOrganize
             <input type="checkbox" checked={consented} onChange={(event) => setConsented(event.target.checked)} className="mt-1" />
             <span>{props.isDemo ? "Use the fixed Georgian script for this demo, regardless of speech. Ending the huddle creates two real Linear issues." : `Transcribe this call in ${props.language === "ka" ? "Georgian" : "English"}. Agreed work can create Linear issues or add updates to existing issues in this project. Participants receive notes, the transcript, and issue links in the app.`}</span>
           </label>
-          <button type="submit" className={buttonClass.primary} disabled={!consented || pending}>
-            {pending ? "Starting…" : props.isDemo ? "Start huddle" : "Start call"}
+          <button type="submit" className={buttonClass.primary} disabled={!consented || pending || (!props.isOrganizer && !props.live)}>
+            {pending ? "Joining…" : props.live || !props.isOrganizer ? "Join call" : props.isDemo ? "Start huddle" : "Start call"}
           </button>
         </form>
       )}

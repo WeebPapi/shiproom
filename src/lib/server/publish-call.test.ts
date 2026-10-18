@@ -1,14 +1,14 @@
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
-import { finishMeetingCall } from "./publish-call";
+import { finishMeetingCall, openMeetingCall } from "./publish-call";
 
-const mocks = vi.hoisted(() => ({ admin: vi.fn(), options: vi.fn(), authorization: vi.fn(), stored: vi.fn() }));
+const mocks = vi.hoisted(() => ({ admin: vi.fn(), options: vi.fn(), authorization: vi.fn(), stored: vi.fn(), room: vi.fn(), existingRoom: vi.fn(), token: vi.fn() }));
 vi.mock("server-only", () => ({}));
 vi.mock("next/cache", () => ({ revalidatePath: vi.fn() }));
 vi.mock("@/lib/supabase/server", () => ({ createAdminClient: mocks.admin }));
 vi.mock("./connections", () => ({ getLinearOptions: mocks.options, getLinearAuthorization: mocks.authorization }));
 vi.mock("./config", () => ({ serverConfig: { anthropicApiKey: () => "ai-key", anthropicWorkspaceId: () => null, anthropicModel: () => "test-model", cursorPrRepo: () => "WeebPapi/acme-repo-picker" } }));
 vi.mock("@/lib/env", () => ({ getPublicEnv: () => ({ appUrl: "https://shiproom.example.com" }) }));
-vi.mock("./daily", () => ({ fetchStoredTranscript: mocks.stored }));
+vi.mock("./daily", () => ({ fetchStoredTranscript: mocks.stored, ensurePrivateRoom: mocks.room, getExistingRoom: mocks.existingRoom, createRoomToken: mocks.token }));
 afterEach(() => vi.unstubAllGlobals());
 
 type Row = Record<string, unknown>;
@@ -53,6 +53,7 @@ function from(table: string) {
 }
 
 beforeEach(() => {
+  vi.clearAllMocks();
   failTaskSave = false;
   failReceiptSave = false;
   rows = {
@@ -61,9 +62,42 @@ beforeEach(() => {
     transcripts: [], tasks: [], notifications: [], meeting_participants: [{ meeting_id: meetingId, user_id: "participant" }],
   };
   mocks.admin.mockReturnValue({ from });
+  const room = { name: "saved-room", url: "https://example.daily.co/saved-room", transcription: "daily" };
+  mocks.room.mockResolvedValue(room);
+  mocks.existingRoom.mockResolvedValue(room);
+  mocks.token.mockResolvedValue({ token: "member-token" });
   mocks.stored.mockResolvedValue({ id: "stored", vtt: "WEBVTT\n\n00:00:01.000 --> 00:00:02.000\n<v Speaker 1>შევთანხმდით რეპოზიტორიის არჩევის ცარიელი მდგომარეობის დამატებაზე.\n\n00:00:02.000 --> 00:00:03.000\n<v Speaker 2>კი, private repository ამ ეტაპზე არ გვჭირდება.\n" });
   mocks.authorization.mockResolvedValue("Bearer oauth-token");
   mocks.options.mockResolvedValue({ status: "ready", teams: [{ id: "chosen-team", name: "Chosen team", key: "CH", projects: [{ id: "chosen-project", name: "Chosen project" }, { id: "other", name: "Shiproom Demo" }] }] });
+});
+
+it("joins the saved room as a member without reprovisioning or changing the live meeting", async () => {
+  Object.assign(rows.meetings[0], { daily_room_name: "saved-room", capture_status: "live", started_at: "2026-10-18T08:00:00Z" });
+  const before = { ...rows.meetings[0] };
+  const result = await openMeetingCall({ teamId, meetingId, userId: "new-participant", displayName: "Teammate", isOrganizer: false, language: "ka", contextNames: [], isDemo: false, roomName: "saved-room", startedAt: "2026-10-18T08:00:00Z" });
+  expect(result).toMatchObject({ url: "https://example.daily.co/saved-room", token: "member-token" });
+  expect(mocks.existingRoom).toHaveBeenCalledWith("saved-room", false);
+  expect(mocks.room).not.toHaveBeenCalled();
+  expect(mocks.token.mock.calls[0][0]).toMatchObject({ roomName: "saved-room", userId: "new-participant", isOwner: false });
+  expect(rows.meetings[0]).toEqual(before);
+  expect(rows.meeting_participants).toContainEqual(expect.objectContaining({ user_id: "new-participant", meeting_id: meetingId }));
+});
+
+it("does not let a teammate create a call before the organizer starts it", async () => {
+  expect(await openMeetingCall({ teamId, meetingId, userId: "participant", displayName: "Teammate", isOrganizer: false, language: "ka", contextNames: [], isDemo: false, roomName: null, startedAt: null })).toEqual({ error: "The organizer has not started this call yet." });
+  expect(mocks.room).not.toHaveBeenCalled();
+  expect(mocks.token).not.toHaveBeenCalled();
+});
+
+it("keeps the original start time when the organizer rejoins", async () => {
+  await openMeetingCall({ teamId, meetingId, userId: "organizer", displayName: "Organizer", isOrganizer: true, language: "ka", contextNames: [], isDemo: false, roomName: "saved-room", startedAt: "2026-10-18T08:00:00Z" });
+  expect(rows.meetings[0].started_at).toBe("2026-10-18T08:00:00Z");
+});
+
+it("returns a retryable join error when the room provider times out", async () => {
+  mocks.existingRoom.mockRejectedValueOnce(new DOMException("Timed out", "TimeoutError"));
+  expect(await openMeetingCall({ teamId, meetingId, userId: "participant", displayName: "Teammate", isOrganizer: false, language: "ka", contextNames: [], isDemo: false, roomName: "saved-room", startedAt: null })).toEqual({ error: "The call service could not be reached. Please try joining again." });
+  expect(mocks.token).not.toHaveBeenCalled();
 });
 
 it.each([{ saveFails: false, hasTasks: true, amend: false }, { saveFails: true, hasTasks: true, amend: false }, { saveFails: false, hasTasks: false, amend: false }, { saveFails: false, hasTasks: true, amend: true }])("persists grounded actions and recovers their exact targets (%j)", async ({ saveFails, hasTasks, amend }) => {

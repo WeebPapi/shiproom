@@ -40,6 +40,17 @@ function roomFrom(
   return { name: body.name, url: body.url, transcription };
 }
 
+/** Joining must not reconfigure a live room or create a replacement. */
+export async function getExistingRoom(name: string, isDemo: boolean): Promise<DailyRoom | { error: string }> {
+  const response = await daily(`/rooms/${encodeURIComponent(name)}`);
+  if (response.status === 404) return { error: "This call is no longer available. Ask the organizer to start a new huddle." };
+  if (!response.ok) return { error: await errorText(response) };
+  const body = await response.json();
+  if (body.privacy !== "private") return { error: "This call is not configured for private access." };
+  const room = roomFrom(body, "unavailable");
+  return room ? { ...room, transcription: isDemo ? "unavailable" : room.transcription } : { error: "Daily did not return a room." };
+}
+
 /** Private room, reused by meeting id. Transcription storage is requested and reported honestly. */
 export async function ensurePrivateRoom(meetingId: string, language: Language, contextNames: string[], isDemo = false): Promise<DailyRoom | { error: string }> {
   const name = `sr${meetingId.replaceAll("-", "")}`;

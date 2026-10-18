@@ -6,7 +6,7 @@ import { markNotificationRead } from "@/lib/actions/inbox";
 import { requireMembership } from "@/lib/server/auth";
 import { createClient } from "@/lib/supabase/server";
 import { formatInZone } from "@/lib/time";
-import { RefreshInbox } from "./refresh-inbox";
+import { RefreshPage } from "@/components/refresh-page";
 
 type NotificationRow = {
   id: string;
@@ -48,7 +48,7 @@ export default async function InboxPage({ params }: { params: Promise<{ teamId: 
     <>
       <PageHeader title="Inbox" />
       <PageBody>
-        <RefreshInbox />
+        <RefreshPage />
         {recaps.length > 0 && (
           <section aria-labelledby="recaps-heading" className="mb-6 space-y-3">
             <h2 id="recaps-heading" className="font-medium">Meeting notes and transcripts</h2>

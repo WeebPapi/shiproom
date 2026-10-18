@@ -15,7 +15,7 @@ import { extractionResultSchema, transcriptSchema, validateExtractionAgainstTran
 import { getPublicEnv } from "@/lib/env";
 import { DEMO_EXTRACTION, DEMO_NOTE, demoTranscript } from "@/lib/demo";
 import { extractAgreedTasks } from "@/lib/server/claude";
-import { createRoomToken, ensurePrivateRoom, fetchStoredTranscript } from "@/lib/server/daily";
+import { createRoomToken, ensurePrivateRoom, getExistingRoom, fetchStoredTranscript } from "@/lib/server/daily";
 import { serverConfig } from "./config";
 import { createLinearIssue, fetchLinearIssues, findCursorDelegate, updateLinearIssue } from "./linear";
 import { getLinearAuthorization, getLinearOptions } from "@/lib/server/connections";
@@ -80,43 +80,53 @@ export async function openMeetingCall(input: {
   language: Language;
   contextNames: string[];
   isDemo: boolean;
+  roomName: string | null;
+  startedAt: string | null;
 }): Promise<CallOpen> {
-  const room = await ensurePrivateRoom(input.meetingId, input.language, input.contextNames, input.isDemo);
-  if ("error" in room) return { error: room.error };
-  const token = await createRoomToken({
-    roomName: room.name,
-    userId: input.userId,
-    displayName: input.displayName,
-    isOwner: input.isOrganizer,
-  });
-  if ("error" in token) return { error: token.error };
-
-  const admin = createAdminClient();
-  let persistenceWarning: string | null = null;
-  if (!admin) persistenceWarning = UNSAVED;
-  else {
-    const saved = await patchMeeting(admin, input.meetingId, {
-      daily_room_name: room.name,
-      capture_status: "live",
-      started_at: new Date().toISOString(),
+  if (!input.isOrganizer && !input.roomName) return { error: "The organizer has not started this call yet." };
+  try {
+    const room = input.roomName
+      ? await getExistingRoom(input.roomName, input.isDemo)
+      : await ensurePrivateRoom(input.meetingId, input.language, input.contextNames, input.isDemo);
+    if ("error" in room) return { error: room.error };
+    const token = await createRoomToken({
+      roomName: room.name,
+      userId: input.userId,
+      displayName: input.displayName,
+      isOwner: input.isOrganizer,
     });
-    persistenceWarning = saved;
-    // shortcut: attendance is the member who was issued a token, upgrade when Daily join webhooks are verified.
-    const { error } = await admin.from("meeting_participants").upsert(
-      {
-        team_id: input.teamId,
-        meeting_id: input.meetingId,
-        user_id: input.userId,
-        provenance: "organizer",
-        consented_at: new Date().toISOString(),
-        first_joined_at: new Date().toISOString(),
-      },
-      { onConflict: "meeting_id,user_id", ignoreDuplicates: true },
-    );
-    if (error) console.error("participant insert failed", error.message);
-  }
+    if ("error" in token) return { error: token.error };
 
-  return { url: room.url, token: token.token, roomName: room.name, transcription: room.transcription, transcriptionOptions: transcriptionOptions(input.language, input.contextNames), persistenceWarning };
+    const admin = createAdminClient();
+    let persistenceWarning: string | null = null;
+    if (!admin) persistenceWarning = UNSAVED;
+    else {
+      const saved = input.isOrganizer ? await patchMeeting(admin, input.meetingId, {
+        daily_room_name: room.name,
+        capture_status: "live",
+        started_at: input.startedAt ?? new Date().toISOString(),
+      }) : null;
+      persistenceWarning = saved;
+      // shortcut: attendance is the member who was issued a token, upgrade when Daily join webhooks are verified.
+      const { error } = await admin.from("meeting_participants").upsert(
+        {
+          team_id: input.teamId,
+          meeting_id: input.meetingId,
+          user_id: input.userId,
+          provenance: "organizer",
+          consented_at: new Date().toISOString(),
+          first_joined_at: new Date().toISOString(),
+        },
+        { onConflict: "meeting_id,user_id", ignoreDuplicates: true },
+      );
+      if (error) console.error("participant insert failed", error.message);
+    }
+
+    return { url: room.url, token: token.token, roomName: room.name, transcription: room.transcription, transcriptionOptions: transcriptionOptions(input.language, input.contextNames), persistenceWarning };
+  } catch (error) {
+    console.error("Call join failed", { meetingId: input.meetingId, error: error instanceof Error ? error.name : "UnknownError" });
+    return { error: "The call service could not be reached. Please try joining again." };
+  }
 }
 
 function sourceNote(kind: CallFinish["transcriptSource"]): string {
