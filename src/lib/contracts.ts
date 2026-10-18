@@ -128,7 +128,7 @@ export const transcriptSchema = z
     meetingId: uuid,
     revision: z.number().int().min(1),
     // `browser` is this slice's local-microphone fallback when Daily transcription produces nothing.
-    source: z.enum(["daily", "upload", "browser"]),
+    source: z.enum(["daily", "upload", "browser", "demo"]),
     complete: z.boolean(),
     language: languageSchema,
     segments: z.array(transcriptSegmentSchema).max(20_000),

@@ -16,7 +16,7 @@ type SpeechRec = {
   stop: () => void;
 };
 
-export function CallPanel(props: { teamId: string; meetingId: string; isOrganizer: boolean; dailyReady: boolean; language: "en" | "ka"; ended: boolean }) {
+export function CallPanel(props: { teamId: string; meetingId: string; isOrganizer: boolean; dailyReady: boolean; language: "en" | "ka"; ended: boolean; isDemo: boolean }) {
   const router = useRouter();
   const containerRef = useRef<HTMLDivElement>(null);
   const frameRef = useRef<{ leave: () => Promise<unknown>; destroy: () => void; stopTranscription: () => void } | null>(null);
@@ -49,14 +49,17 @@ export function CallPanel(props: { teamId: string; meetingId: string; isOrganize
       });
       frameRef.current = frame;
       const browser = () => {
+        if (props.isDemo) return;
         speech = startBrowserSpeech(started, browserCues, speechRef, setStatus, props.language) ?? speech;
       };
       frame.on("transcription-started", () => setStatus("Daily transcription is on."));
       frame.on("transcription-error", (event) => {
+        if (props.isDemo) return;
         setStatus(`Daily transcription did not start${event.errorMsg ? `: ${event.errorMsg}` : ""}. Capturing this microphone instead.`);
         browser();
       });
       frame.on("transcription-message", (event) => {
+        if (props.isDemo) return;
         const raw = event.rawResponse ?? {};
         const interim = raw.is_final === false && raw.speech_final !== true;
         const text = event.text?.trim();
@@ -67,11 +70,12 @@ export function CallPanel(props: { teamId: string; meetingId: string; isOrganize
         dailyCues.current.push({ speakerLabel: event.participantId ? `Speaker ${event.participantId.slice(0, 4)}` : null, text, startMs, endMs: startMs });
       });
       frame.on("joined-meeting", () => {
+        if (props.isDemo) return;
         if (join.transcription === "unavailable") browser();
         else if (props.isOrganizer) frame.startTranscription(join.transcriptionOptions);
       });
       await frame.join({ url: join.url, token: join.token });
-      if (!cancel) setStatus(join.transcription === "daily" ? "In the call. Waiting for Daily transcription." : "In the call. Daily transcription storage was not enabled; this microphone is being captured.");
+      if (!cancel) setStatus(props.isDemo ? "Demo huddle live. Say anything; the Georgian script is fixed." : join.transcription === "daily" ? "In the call. Waiting for Daily transcription." : "In the call. Daily transcription storage was not enabled; this microphone is being captured.");
     })().catch(() => setError("The call could not be opened in this browser."));
     return () => {
       cancel = true;
@@ -79,7 +83,7 @@ export function CallPanel(props: { teamId: string; meetingId: string; isOrganize
       frameRef.current?.destroy();
       frameRef.current = null;
     };
-  }, [join, props.isOrganizer, props.language]);
+  }, [join, props.isOrganizer, props.language, props.isDemo]);
 
   async function start() {
     setPending(true);
@@ -128,7 +132,7 @@ export function CallPanel(props: { teamId: string; meetingId: string; isOrganize
 
   return (
     <div className="space-y-3">
-      <p className="text-muted">{props.language === "ka" ? "Georgian" : "English"} transcript with speaker labels. Meeting notes and Linear tickets are generated in English.</p>
+      {!props.isDemo && <p className="text-muted">{props.language === "ka" ? "Georgian" : "English"} transcript with speaker labels. Meeting notes and Linear tickets are generated in English.</p>}
       <p role="status" className="flex items-center gap-2 text-xs text-muted">
         <span aria-hidden className={`size-1.5 rounded-full ${join ? "bg-success" : "bg-muted/40"}`} />
         {status}
@@ -144,10 +148,10 @@ export function CallPanel(props: { teamId: string; meetingId: string; isOrganize
         >
           <label className="flex items-start gap-2 text-muted accent-accent">
             <input type="checkbox" checked={consented} onChange={(event) => setConsented(event.target.checked)} className="mt-1" />
-            <span>Transcribe this call in {props.language === "ka" ? "Georgian" : "English"}. Agreed work can create Linear issues or add updates to existing issues in this project. Participants receive notes, the transcript, and issue links in the app.</span>
+            <span>{props.isDemo ? "Use the fixed Georgian script for this demo, regardless of speech. Ending the huddle creates two real Linear issues." : `Transcribe this call in ${props.language === "ka" ? "Georgian" : "English"}. Agreed work can create Linear issues or add updates to existing issues in this project. Participants receive notes, the transcript, and issue links in the app.`}</span>
           </label>
           <button type="submit" className={buttonClass.primary} disabled={!consented || pending}>
-            {pending ? "Starting…" : "Start call"}
+            {pending ? "Starting…" : props.isDemo ? "Start huddle" : "Start call"}
           </button>
         </form>
       )}
@@ -167,7 +171,7 @@ export function CallPanel(props: { teamId: string; meetingId: string; isOrganize
       {result && <CallOutcome result={result} />}
       {(result?.error || props.ended || callEnded) && !join && props.isOrganizer && (
         <button type="button" className={buttonClass.secondary} onClick={() => void endCall()} disabled={pending}>
-          {pending ? "Retrying…" : "Retry processing"}
+          {pending ? "Retrying…" : props.isDemo ? "Retry this take" : "Retry processing"}
         </button>
       )}
     </div>

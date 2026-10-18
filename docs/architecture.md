@@ -99,6 +99,8 @@ Freeze resolved context and transcript revision when publication begins. A later
 
 ## Transcript contract
 
+**Implemented scripted-demo exception:** `meetings.is_demo` is a server-owned boolean, default false, immutable to browser roles. Only the authenticated `/demo` preparation action creates demo huddles (`language: ka`). Call actions re-read this flag after membership/organizer checks; client input cannot enable it. Such meetings bypass speech capture and extraction, save revision 1 with `source: demo`, and use the fixed validated batch from `src/lib/demo.ts`. The existing publisher reuses saved task identities on partial retries; demo publication stops if transcript or task-identity persistence fails. The migration extends the transcript source constraint to include `demo`. See [Demo](demo.md) for setup and disclosure; this is not a real Georgian capture artifact. The normal capture contract follows.
+
 ```json
 {
   "meetingId": "app-meeting-uuid",

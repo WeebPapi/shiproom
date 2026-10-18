@@ -53,6 +53,26 @@ export function visibleLinearNames(teams: LinearTeamList[]): string[] {
 }
 
 /** Explicit selections win; inference is handled separately and never guesses a destination. */
+const namedShiproom = (name: string) => name.toLowerCase().includes("shiproom");
+
+/** Scripted demo destination: one Shiproom project wins, otherwise one Shiproom team. Anything else blocks creation. */
+export function selectShiproomDestination(teams: LinearTeamList[]): DestinationChoice {
+  const names = visibleLinearNames(teams);
+  const projects = teams.flatMap((team) =>
+    team.projects
+      .filter((project) => namedShiproom(project.name))
+      .map((project) => ({ teamId: team.id, teamName: team.name, projectId: project.id, projectName: project.name })),
+  );
+  if (projects.length === 1) return { ok: true, ...projects[0] };
+  if (projects.length > 1) return { ok: false, names };
+  const matchingTeams = teams.filter((team) => namedShiproom(team.name));
+  if (matchingTeams.length === 1) {
+    const team = matchingTeams[0];
+    return { ok: true, teamId: team.id, teamName: team.name, projectId: null, projectName: null };
+  }
+  return { ok: false, names };
+}
+
 export function selectedLinearDestination(teams: LinearTeamList[], teamId: string | null, projectId: string | null): DestinationChoice {
   const team = teams.find((team) => team.id === teamId);
   const project = team?.projects.find((project) => project.id === projectId);

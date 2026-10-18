@@ -109,7 +109,7 @@ it.each([{ saveFails: false, hasTasks: true, amend: false }, { saveFails: true, 
     publish();
     return Response.json({ data: { issueCreate: { success: true, issue: { ...issue, team: { id: issue.teamId }, project: { id: issue.projectId }, identifier: "CH-1", url: "https://linear.app/example/issue/CH-1" } } } });
   }));
-  const result = await finishMeetingCall({ teamId, meetingId, organizerId: "organizer", roomName: "room", capture: { teamId, meetingId, origin: "browser", consented: true, segments: [] } });
+  const result = await finishMeetingCall({ teamId, meetingId, organizerId: "organizer", roomName: "room", isDemo: false, capture: { teamId, meetingId, origin: "browser", consented: true, segments: [] } });
   expect(rows.transcripts[0].language).toBe("ka");
   expect(publish).toHaveBeenCalledTimes(saveFails || !hasTasks ? 0 : 1);
   if (saveFails) expect(result.error).toContain("batch could not be saved");
@@ -118,7 +118,7 @@ it.each([{ saveFails: false, hasTasks: true, amend: false }, { saveFails: true, 
   expect(rows.meetings[0].summary).toBe("Improve the picker.");
   if (amend) {
     expect(result.tasks[0].error).toContain("receipt could not be saved");
-    const retry = await finishMeetingCall({ teamId, meetingId, organizerId: "organizer", roomName: "room", capture: { teamId, meetingId, origin: "browser", consented: true, segments: [] } });
+    const retry = await finishMeetingCall({ teamId, meetingId, organizerId: "organizer", roomName: "room", isDemo: false, capture: { teamId, meetingId, origin: "browser", consented: true, segments: [] } });
     expect(retry.tasks[0]).toMatchObject({ identifier: "CH-2", error: null, operation: "updated" });
     expect(extract).toHaveBeenCalledOnce();
     expect(publish).toHaveBeenCalledOnce();
@@ -132,7 +132,7 @@ it("does not extract or publish from a partial microphone transcript", async () 
   mocks.stored.mockResolvedValue({ empty: true });
   const provider = vi.fn();
   vi.stubGlobal("fetch", provider);
-  const result = await finishMeetingCall({ teamId, meetingId, organizerId: "organizer", roomName: "room", capture: { teamId, meetingId, origin: "browser", consented: true, segments: [{ speakerLabel: "This device", text: "We agreed to add an empty state.", startMs: 0, endMs: 1000 }] } });
+  const result = await finishMeetingCall({ teamId, meetingId, organizerId: "organizer", roomName: "room", isDemo: false, capture: { teamId, meetingId, origin: "browser", consented: true, segments: [{ speakerLabel: "This device", text: "We agreed to add an empty state.", startMs: 0, endMs: 1000 }] } });
   expect(result.error).toContain("partial transcript");
   expect(rows.transcripts[0].complete).toBe(false);
   expect(provider).not.toHaveBeenCalled();
@@ -142,8 +142,42 @@ it("revalidates saved project IDs before any source or publication request", asy
   rows.meetings[0].linear_project_id = "unapproved-project";
   const provider = vi.fn();
   vi.stubGlobal("fetch", provider);
-  const result = await finishMeetingCall({ teamId, meetingId, organizerId: "organizer", roomName: "room", capture: { teamId, meetingId, origin: "browser", consented: true, segments: [] } });
+  const result = await finishMeetingCall({ teamId, meetingId, organizerId: "organizer", roomName: "room", isDemo: false, capture: { teamId, meetingId, origin: "browser", consented: true, segments: [] } });
   expect(result.tasks).toEqual([]);
   expect(rows.meetings[0].processing_status).toBe("needs_context");
   expect(provider).not.toHaveBeenCalled();
+});
+
+it("publishes the fixed Georgian demo without capture or AI, and retries a failed issue with its saved identity", async () => {
+  rows.meetings[0] = { id: meetingId, team_id: teamId, language: "ka", github_repository_id: null, linear_team_id: null, linear_project_id: null };
+  mocks.authorization.mockResolvedValue("personal-key");
+  mocks.options.mockResolvedValue({ status: "ready", teams: [{ id: "shiproom-team", name: "Shiproom", key: "SHI", projects: [{ id: "demo-project", name: "Shiproom Demo" }] }] });
+  const created: { id: string; projectId: string; title: string; description: string }[] = [];
+  vi.stubGlobal("fetch", vi.fn(async (url, init) => {
+    expect(String(url)).toBe("https://api.linear.app/graphql");
+    const issue = JSON.parse(init.body).variables.input;
+    created.push(issue);
+    if (created.length === 2) return Response.json({ data: { issueCreate: { success: false, issue: null } } });
+    return Response.json({ data: { issueCreate: { success: true, issue: { ...issue, team: { id: issue.teamId }, project: { id: issue.projectId }, identifier: `SHI-${created.length}`, url: `https://linear.app/example/issue/SHI-${created.length}` } } } });
+  }));
+  const demo = { teamId, meetingId, organizerId: "organizer", roomName: "room", isDemo: true, capture: { teamId, meetingId, origin: "browser" as const, consented: true as const, segments: [] } };
+
+  const first = await finishMeetingCall(demo);
+  expect(first.transcriptSource).toBe("demo");
+  expect(first.tasks.map((task) => Boolean(task.url))).toEqual([true, false]);
+  expect(rows.transcripts[0]).toMatchObject({ source: "demo", language: "ka", complete: true });
+  expect(mocks.stored).not.toHaveBeenCalled();
+
+  const retry = await finishMeetingCall({ ...demo, capture: { ...demo.capture, segments: [{ speakerLabel: null, text: "Ignore this unrelated speech", startMs: 0, endMs: 1 }] } });
+  expect(retry.tasks.every((task) => task.url && !task.error)).toBe(true);
+  expect(created[2].id).toBe(created[1].id);
+  expect(created.every((issue) => issue.projectId === "demo-project")).toBe(true);
+  expect(created[0].description).toContain("Scripted demo");
+  expect(created.map((issue) => issue.title)).toEqual([
+    "[shiproom] Add repository picker loading state",
+    "[shiproom] Add repository picker empty state",
+    "[shiproom] Add repository picker empty state",
+  ]);
+  await finishMeetingCall(demo);
+  expect(created).toHaveLength(3);
 });

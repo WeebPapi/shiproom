@@ -14,6 +14,8 @@ Linear is the central project/work connector. Shiproom still owns membership, me
 
 ## Scope for 24 hours
 
+**Filming-only exception (D19):** authenticated `/demo` meetings deliberately use a fixed synthetic Georgian transcript and task batch regardless of speech, then create real Linear issues. The route and resulting issue descriptions disclose this. Ordinary calls retain their existing behavior; scripted recordings do not satisfy live transcription or AC9. See the [filming runbook](demo.md).
+
 Deliver one planning workflow with two entry paths, S1 and S2 below. The live-call path is preferred; upload is a deliberately supported fallback. Target desktop Chrome/Edge first, four authenticated participants, English and preferably Georgian speech, one Linear workspace per Shiproom team, and one GitHub repo plus one Linear team/project per meeting. **Georgian demo priority** (2026-10-18 clarification): Georgian is the default transcription language; English remains selectable. Generated notes and tickets use English while source transcript/evidence stays in its original language. Verify speaker separation and Georgian quality before recording. Other limits are engineering defaults, not permanent product limits.
 
 Required scope:

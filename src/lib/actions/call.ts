@@ -22,7 +22,7 @@ export async function startMeetingCall(input: { teamId: string; meetingId: strin
   const supabase = await createClient();
   const { data: meeting } = await supabase
     .from("meetings")
-    .select("id, organizer_id, kind, language, github_repository_id, linear_team_id, linear_project_id, ended_at")
+    .select("id, organizer_id, kind, language, github_repository_id, linear_team_id, linear_project_id, ended_at, is_demo")
     .eq("id", parsed.data.meetingId)
     .eq("team_id", parsed.data.teamId)
     .maybeSingle();
@@ -42,6 +42,7 @@ export async function startMeetingCall(input: { teamId: string; meetingId: strin
     isOrganizer: meeting.organizer_id === access.user.id,
     language: meeting.language,
     contextNames: [repository?.fullName, team?.name, project?.name].filter((name): name is string => Boolean(name)),
+    isDemo: meeting.is_demo === true,
   });
 }
 
@@ -54,7 +55,7 @@ export async function endMeetingCall(input: unknown): Promise<CallFinish> {
   const supabase = await createClient();
   const { data: meeting } = await supabase
     .from("meetings")
-    .select("id, organizer_id, daily_room_name")
+    .select("id, organizer_id, daily_room_name, is_demo")
     .eq("id", parsed.data.meetingId)
     .eq("team_id", parsed.data.teamId)
     .maybeSingle();
@@ -68,6 +69,7 @@ export async function endMeetingCall(input: unknown): Promise<CallFinish> {
     organizerId: access.user.id,
     roomName,
     capture: parsed.data,
+    isDemo: meeting.is_demo === true,
   });
 }
 

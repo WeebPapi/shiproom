@@ -4,6 +4,8 @@ Last updated: 2026-10-18. Update this file for relevant decisions and verified p
 
 ## Confirmed user requirements
 
+- **D19 — scripted filming demo (2026-10-18):** add an authenticated `/demo` huddle using a fixed synthetic 30-second Georgian transcript and two fixed, grounded tasks regardless of speech. Daily remains the call UI; speech recognition and model extraction are bypassed only for persisted demo meetings. Linear writes remain real and restricted to a Shiproom destination. Label the page, transcript, and issue descriptions as scripted; this does not verify Georgian transcription or extraction quality. Keep the normal call path unchanged.
+
 - **D1 — product:** browser-only, straightforward Linear-inspired UI for developer meetings; team formation with linked GitHub identities/email and Linear context.
 - **D2 — primary scenario:** planning conversation becomes actionable Linear issues informed by read-only GitHub context. No code/PR generation in this build.
 - **D3 — context:** modal before scheduling or starting a huddle offers connected repo/team/project choices and inference. Unresolved context prompts the organizer after the call.
@@ -47,6 +49,8 @@ These are scoped implementation recommendations, chosen to make the request conc
 
 ## Implementation ledger
 
+- **2026-10-18 — scripted filming path:** implemented D19 at `/demo`, reusing the authenticated Daily call UI and Linear publisher. Fixed Georgian transcript/tasks are server-selected from an immutable-to-browser meeting flag, clearly labeled, and saved before publication. Demo retries finish missing tasks with persisted UUIDs; ordinary-call retry behavior is unchanged. Added a migration and the [30-second filming runbook](demo.md). Verified 44 tests (including real migration/RLS checks and mocked publication failures), typecheck, lint, production build, and signed-out `/demo` HTTP redirect on Node 22.13.1. Node 24, native-speaker review, live Daily/Linear, and signed-in visual QA remain unverified; preview snapshots timed out twice and the fallback browser was unavailable. No remote migration was applied: the connected Supabase MCP project differs from the app's configured project. This is not AC9 evidence.
+
 - **2026-10-17 Tailscale allowlist mismatch identified:** the user supplied saved `http://desktop-jjp034u.tail51e7da.ts.net:3000/...` entries. The browser uses `https://desktop-jjp034u.tail51e7da.ts.net/...`; the scheme and port differ. The matching HTTPS entry was subsequently saved and the full flow passed (verification below).
 
 - **2026-10-17 Tailscale OAuth recheck:** the user reports the callback URL has been added. Retried the normal GitHub flow and the exact callback URL without `next`; both hosted Supabase callback responses went directly to the localhost Site URL, with no Tailscale callback request in the browser network trace. The query parameter is therefore not the cause of this observed fallback. The supplied saved entries later identified the scheme/port mismatch; after correction, testing exposed the separate reverse-proxy redirect bug fixed below.
@@ -85,6 +89,8 @@ Still required before claiming integrations:
 If billing or setup blocks a provider, use the relevant documented fallback and record the change. Unfinished self-service onboarding must be disclosed if the demo relies on a preconfigured team. Do not cut authorization, evidence, or duplicate safety to claim the full scope is complete.
 
 ## Change and verification log
+
+- **2026-10-18 — scripted demo merged with selected-context pipeline:** `/demo` takes keep the fixed Georgian transcript/tasks and skip capture, Claude, and Daily transcription, but now run through the selected-context publisher: the batch is persisted before Linear writes, retries reuse saved UUIDs, and the destination is the single Shiproom-named project/team visible to the app team's own Linear access (personal key only for `LINEAR_DEMO_TEAM_ID`). Normal meetings are unchanged. Requires migration `20261018090000_scripted_demo.sql`; meeting pages fail until it is applied.
 
 - **2026-10-18 — mocked Build into PRs:** at the user's request the meeting result page has a client-only **Build into PRs** button that fakes per-ticket PR progress and numbers for the demo video. It is a labeled mock (tooltip, [Demo checks](demo.md)), not a scope change: code generation and GitHub writes remain out of scope, and nothing is persisted or sent anywhere. Verified in the dev server on an isolated render (button disables, *Building PR…*, then #41–#43); the signed-in meeting page was not re-viewed because the preview browser session expired. Typecheck and lint passed.
 

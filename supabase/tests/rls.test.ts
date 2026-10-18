@@ -209,6 +209,26 @@ describe("meetings, notifications, storage", () => {
     ).rejects.toThrow(/foreign key/);
   });
 
+  it("keeps demo mode server-owned and permits labeled Georgian demo transcripts", async () => {
+    await expect(asUser(ALICE, () => db.query(
+      `insert into public.meetings (team_id, organizer_id, kind, title, language, context_mode, is_demo)
+       values ($1, $2, 'huddle', 'Demo', 'ka', 'infer', true)`, [teamA, ALICE],
+    ))).rejects.toThrow(/permission denied/);
+    const [meeting] = await rows<{ id: string }>(
+      `insert into public.meetings (team_id, organizer_id, kind, title, language, context_mode, is_demo)
+       values ($1, $2, 'huddle', 'Demo', 'ka', 'infer', true) returning id`, [teamA, ALICE],
+    );
+    await expect(asUser(ALICE, () => db.query(`update public.meetings set is_demo = false where id = $1`, [meeting.id])))
+      .rejects.toThrow(/permission denied/);
+    await db.query(
+      `insert into public.transcripts (team_id, meeting_id, revision, source, language, segments, complete, content_hash)
+       values ($1, $2, 1, 'demo', 'ka', '[]', true, 'synthetic')`, [teamA, meeting.id],
+    );
+    expect(await asUser(ALICE, () => rows(`select source, language from public.transcripts where meeting_id = $1`, [meeting.id])))
+      .toEqual([{ source: "demo", language: "ka" }]);
+    expect(await asUser(MALLORY, () => rows(`select id from public.transcripts where meeting_id = $1`, [meeting.id]))).toEqual([]);
+  });
+
   it("shows notifications only to their recipient", async () => {
     await db.query(
       `insert into public.notifications (team_id, recipient_id, meeting_id, kind, title)

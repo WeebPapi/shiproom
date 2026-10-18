@@ -39,6 +39,8 @@ If a card/paid transcription cannot be enabled in hour 1, keep Daily for calling
 
 ## Daily: live media
 
+The explicitly scripted [`/demo` filming path](demo.md) reuses Daily for media but does not request automatic transcription or run speech recognition/model extraction. It uses the existing Linear personal-key publisher for real issues, with the existing unique Shiproom-name destination check. Its fixed transcript and task fixture do not verify Georgian provider quality.
+
 Create private rooms on the server and mint expiring room-scoped meeting tokens. Tie provider `user_id` to the authenticated app user and store the room/session mapping. Limit administrative/transcription privileges to the organizer. The app decides admission; knowing a room URL is insufficient.
 
 Enable `enable_transcription_storage`. Live events can render captions, but they are ephemeral without storage. Use the server [transcript API](https://docs.daily.co/reference/rest-api/transcripts) to retrieve the finished artifact; map its session to the meeting. Verify finalization after end-of-call and retain the raw artifact privately until normalized.

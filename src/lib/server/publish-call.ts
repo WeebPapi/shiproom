@@ -6,12 +6,14 @@ import {
   issueDescription,
   parseWebVtt,
   selectedLinearDestination,
+  selectShiproomDestination,
   shiproomTitle,
   toTranscript,
   type Cue,
 } from "@/lib/call-result";
 import { extractionResultSchema, transcriptSchema, validateExtractionAgainstTranscript, type ExtractionResult, type LiveCapture, type Transcript } from "@/lib/contracts";
 import { getPublicEnv } from "@/lib/env";
+import { DEMO_EXTRACTION, DEMO_NOTE, demoTranscript } from "@/lib/demo";
 import { extractAgreedTasks } from "@/lib/server/claude";
 import { createRoomToken, ensurePrivateRoom, fetchStoredTranscript } from "@/lib/server/daily";
 import { createLinearIssue, fetchLinearIssues, updateLinearIssue } from "@/lib/server/linear";
@@ -31,7 +33,7 @@ export type CallTask = { title: string; url: string | null; identifier: string |
 
 export type CallFinish = {
   error: string | null;
-  transcriptSource: "daily-stored" | "daily-live" | "browser" | null;
+  transcriptSource: "daily-stored" | "daily-live" | "browser" | "demo" | null;
   transcriptNote: string | null;
   summary: string | null;
   decisions: string[];
@@ -76,8 +78,9 @@ export async function openMeetingCall(input: {
   isOrganizer: boolean;
   language: Language;
   contextNames: string[];
+  isDemo: boolean;
 }): Promise<CallOpen> {
-  const room = await ensurePrivateRoom(input.meetingId, input.language, input.contextNames);
+  const room = await ensurePrivateRoom(input.meetingId, input.language, input.contextNames, input.isDemo);
   if ("error" in room) return { error: room.error };
   const token = await createRoomToken({
     roomName: room.name,
@@ -116,6 +119,7 @@ export async function openMeetingCall(input: {
 }
 
 function sourceNote(kind: CallFinish["transcriptSource"]): string {
+  if (kind === "demo") return DEMO_NOTE;
   if (kind === "daily-stored") return "Transcript source: Daily stored transcript.";
   if (kind === "daily-live") return "Transcript source: Daily live captions from this browser. Daily did not return a stored transcript file.";
   return "Transcript source: browser speech recognition of this device's microphone. Daily transcription did not produce a transcript. Other people are included only if this microphone heard them.";
@@ -259,6 +263,7 @@ export async function finishMeetingCall(input: {
   organizerId: string;
   roomName: string;
   capture: LiveCapture;
+  isDemo: boolean;
 }): Promise<CallFinish> {
   const admin = createAdminClient();
   if (!admin) return emptyFinish("The meeting cannot be saved yet, so no issues will be created. Ask the team owner to finish setup.");
@@ -300,8 +305,10 @@ export async function finishMeetingCall(input: {
   const parsedTranscript = savedTranscript?.complete ? transcriptSchema.safeParse({ ...savedTranscript, meetingId: input.meetingId }) : null;
   if (parsedTranscript && !parsedTranscript.success) return emptyFinish("The saved transcript is invalid. No issues were changed.");
   const captured = parsedTranscript?.success
-    ? { transcript: parsedTranscript.data, kind: "daily-stored" as const, providerId: null }
-    : await captureTranscript(input.meetingId, input.roomName, input.capture, meeting.language);
+    ? { transcript: parsedTranscript.data, kind: input.isDemo ? "demo" as const : "daily-stored" as const, providerId: null }
+    : input.isDemo
+      ? { transcript: demoTranscript(input.meetingId), kind: "demo" as const, providerId: null }
+      : await captureTranscript(input.meetingId, input.roomName, input.capture, meeting.language);
   if ("error" in captured) {
     await patchMeeting(admin, input.meetingId, { capture_status: "failed", processing_status: "failed", error_stage: "transcript", error_message: captured.error });
     revalidatePath(`/teams/${input.teamId}/meetings/${input.meetingId}`);
@@ -322,18 +329,24 @@ export async function finishMeetingCall(input: {
   }
 
   const linear = await getLinearOptions(input.teamId);
-  const destination = linear.status === "ready"
-    ? selectedLinearDestination(linear.teams, meeting?.linear_team_id ?? null, meeting?.linear_project_id ?? null)
-    : null;
-  if (!destination?.ok || !meeting?.github_repository_id) {
+  const destination = linear.status !== "ready" ? null
+    : input.isDemo ? selectShiproomDestination(linear.teams)
+    : selectedLinearDestination(linear.teams, meeting.linear_team_id ?? null, meeting.linear_project_id ?? null);
+  if (input.isDemo && !destination?.ok) {
+    const error = "The scripted demo needs this team's Linear connection to see exactly one Shiproom team or project. No issues were created.";
+    await patchMeeting(admin, input.meetingId, { processing_status: "failed", error_stage: "linear", error_message: error });
+    revalidatePath(`/teams/${input.teamId}/meetings/${input.meetingId}`);
+    return emptyFinish(error, { transcriptSource: captured.kind, transcriptNote: note, linearNames: destination?.names ?? null });
+  }
+  if (!destination?.ok || (!input.isDemo && !meeting.github_repository_id)) {
     const error = "Choose an approved repository and connected Linear team before creating issues. Automatic context inference is not available yet.";
     await patchMeeting(admin, input.meetingId, { processing_status: "needs_context", error_stage: "context", error_message: error });
     revalidatePath(`/teams/${input.teamId}/meetings/${input.meetingId}`);
     return emptyFinish(error, { transcriptSource: captured.kind, transcriptNote: note });
   }
-  const { data: repository } = await admin.from("team_repositories").select("full_name, access")
+  const { data: repository } = input.isDemo ? { data: null } : await admin.from("team_repositories").select("full_name, access")
     .eq("team_id", input.teamId).eq("github_repository_id", meeting.github_repository_id).single();
-  if (!repository || repository.access !== "public") return emptyFinish("The selected repository is not approved for public source context.");
+  if (!input.isDemo && (!repository || repository.access !== "public")) return emptyFinish("The selected repository is not approved for public source context.");
   let authorization: string | null;
   let extracted: Awaited<ReturnType<typeof extractAgreedTasks>>;
   try {
@@ -342,7 +355,10 @@ export async function finishMeetingCall(input: {
     if (rows.length > 0) {
       const saved = extractionResultSchema.safeParse({ summary: meeting.summary ?? "", decisions: meeting.decisions ?? [], openQuestions: meeting.open_questions ?? [], tasks: rows.map(row => row.payload) });
       extracted = saved.success ? { ok: true, result: saved.data } : { ok: false, error: "The saved actions could not be validated. No issues were changed." };
+    } else if (input.isDemo) {
+      extracted = { ok: true, result: DEMO_EXTRACTION };
     } else {
+      if (!repository) throw new Error("The selected repository is unavailable.");
       const [context, linearIssues] = await Promise.all([
         fetchPublicRepositoryContext(meeting.github_repository_id, repository.full_name),
         fetchLinearIssues(authorization, destination.teamId, destination.projectId),

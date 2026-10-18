@@ -41,11 +41,15 @@ function roomFrom(
 }
 
 /** Private room, reused by meeting id. Transcription storage is requested and reported honestly. */
-export async function ensurePrivateRoom(meetingId: string, language: Language, contextNames: string[]): Promise<DailyRoom | { error: string }> {
+export async function ensurePrivateRoom(meetingId: string, language: Language, contextNames: string[], isDemo = false): Promise<DailyRoom | { error: string }> {
   const name = `sr${meetingId.replaceAll("-", "")}`;
   const settings = transcriptionOptions(language, contextNames);
   const existing = await daily(`/rooms/${encodeURIComponent(name)}`);
-  if (existing.ok) {
+  if (existing.ok && isDemo) {
+    const room = roomFrom(await existing.json(), "unavailable");
+    if (room) return { ...room, transcription: "unavailable" };
+  }
+  if (existing.ok && !isDemo) {
     const updated = await daily(`/rooms/${encodeURIComponent(name)}`, { method: "POST", body: JSON.stringify({ properties: { enable_transcription_storage: true, auto_transcription_settings: settings } }) });
     if (!updated.ok) return { error: await errorText(updated) };
     const room = roomFrom(await updated.json(), "daily");
@@ -57,11 +61,11 @@ export async function ensurePrivateRoom(meetingId: string, language: Language, c
     enable_knocking: false,
     enable_screenshare: true,
     max_participants: 8,
-    enable_transcription_storage: true,
-    auto_transcription_settings: settings,
+    // Scripted demo takes use a fixed transcript, so Daily transcription is never requested.
+    ...(isDemo ? {} : { enable_transcription_storage: true, auto_transcription_settings: settings }),
   };
   let created = await daily("/rooms", { method: "POST", body: JSON.stringify({ name, privacy: "private", properties }) });
-  let transcription: "daily" | "unavailable" = "daily";
+  let transcription: "daily" | "unavailable" = isDemo ? "unavailable" : "daily";
   if (!created.ok) {
     transcription = "unavailable";
     created = await daily("/rooms", {
