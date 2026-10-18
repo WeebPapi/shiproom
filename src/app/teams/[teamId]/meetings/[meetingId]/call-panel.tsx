@@ -16,7 +16,7 @@ type SpeechRec = {
   stop: () => void;
 };
 
-export function CallPanel(props: { teamId: string; meetingId: string; isOrganizer: boolean; dailyReady: boolean; georgianMeeting: boolean }) {
+export function CallPanel(props: { teamId: string; meetingId: string; isOrganizer: boolean; dailyReady: boolean; language: "en" | "ka"; ended: boolean }) {
   const router = useRouter();
   const containerRef = useRef<HTMLDivElement>(null);
   const frameRef = useRef<{ leave: () => Promise<unknown>; destroy: () => void; stopTranscription: () => void } | null>(null);
@@ -30,6 +30,7 @@ export function CallPanel(props: { teamId: string; meetingId: string; isOrganize
   const [status, setStatus] = useState("Not started");
   const [error, setError] = useState<string | null>(null);
   const [result, setResult] = useState<CallFinish | null>(null);
+  const [callEnded, setCallEnded] = useState(false);
 
   useEffect(() => {
     if (!join) return;
@@ -48,7 +49,7 @@ export function CallPanel(props: { teamId: string; meetingId: string; isOrganize
       });
       frameRef.current = frame;
       const browser = () => {
-        speech = startBrowserSpeech(started, browserCues, speechRef, setStatus) ?? speech;
+        speech = startBrowserSpeech(started, browserCues, speechRef, setStatus, props.language) ?? speech;
       };
       frame.on("transcription-started", () => setStatus("Daily transcription is on."));
       frame.on("transcription-error", (event) => {
@@ -67,7 +68,7 @@ export function CallPanel(props: { teamId: string; meetingId: string; isOrganize
       });
       frame.on("joined-meeting", () => {
         if (join.transcription === "unavailable") browser();
-        else if (props.isOrganizer) frame.startTranscription({ language: "en" });
+        else if (props.isOrganizer) frame.startTranscription(join.transcriptionOptions);
       });
       await frame.join({ url: join.url, token: join.token });
       if (!cancel) setStatus(join.transcription === "daily" ? "In the call. Waiting for Daily transcription." : "In the call. Daily transcription storage was not enabled; this microphone is being captured.");
@@ -78,20 +79,26 @@ export function CallPanel(props: { teamId: string; meetingId: string; isOrganize
       frameRef.current?.destroy();
       frameRef.current = null;
     };
-  }, [join, props.isOrganizer]);
+  }, [join, props.isOrganizer, props.language]);
 
   async function start() {
     setPending(true);
     setError(null);
-    const opened = await startMeetingCall({ teamId: props.teamId, meetingId: props.meetingId, consented: true });
-    setPending(false);
-    if ("error" in opened) setError(opened.error);
-    else setJoin(opened);
+    try {
+      const opened = await startMeetingCall({ teamId: props.teamId, meetingId: props.meetingId, consented: true });
+      if ("error" in opened) setError(opened.error);
+      else setJoin(opened);
+    } catch {
+      setError("The call could not be started. Please try again.");
+    } finally {
+      setPending(false);
+    }
   }
 
   async function endCall() {
     setPending(true);
     setError(null);
+    setCallEnded(true);
     speechRef.current?.stop();
     const frame = frameRef.current;
     try {
@@ -104,25 +111,30 @@ export function CallPanel(props: { teamId: string; meetingId: string; isOrganize
     frameRef.current = null;
     const segments = dailyCues.current.length > 0 ? dailyCues.current : browserCues.current;
     const origin = dailyCues.current.length > 0 ? "daily-live" : "browser";
-    const finished = await endMeetingCall({ teamId: props.teamId, meetingId: props.meetingId, origin, consented: true, segments });
-    setResult(finished);
-    setJoin(null);
-    setPending(false);
-    setStatus("Call ended.");
-    router.refresh();
+    try {
+      const finished = await endMeetingCall({ teamId: props.teamId, meetingId: props.meetingId, origin, consented: true, segments });
+      setResult(finished);
+    } catch {
+      setError("Processing could not finish. Retry processing to retrieve the stored transcript.");
+    } finally {
+      setJoin(null);
+      setPending(false);
+      setStatus("Call ended.");
+      router.refresh();
+    }
   }
 
   if (!props.dailyReady) return <p className="text-warning">Daily is not set up on this server yet.</p>;
 
   return (
     <div className="space-y-3">
-      {props.georgianMeeting && <p className="text-muted">This meeting is marked Georgian. This path transcribes and extracts English.</p>}
+      <p className="text-muted">{props.language === "ka" ? "Georgian" : "English"} transcript with speaker labels. Meeting notes and Linear tickets are generated in English.</p>
       <p role="status" className="flex items-center gap-2 text-xs text-muted">
         <span aria-hidden className={`size-1.5 rounded-full ${join ? "bg-success" : "bg-muted/40"}`} />
         {status}
       </p>
       {error && <p role="alert" className="text-danger">{error}</p>}
-      {!join && !result && (
+      {!join && !result && !props.ended && !callEnded && (
         <form
           className="space-y-3"
           onSubmit={(event) => {
@@ -132,7 +144,7 @@ export function CallPanel(props: { teamId: string; meetingId: string; isOrganize
         >
           <label className="flex items-start gap-2 text-muted accent-accent">
             <input type="checkbox" checked={consented} onChange={(event) => setConsented(event.target.checked)} className="mt-1" />
-            <span>Transcribe this call in English. Agreed tasks can become Linear issues. Microphone, camera, and screen sharing use the Daily controls.</span>
+            <span>Transcribe this call in {props.language === "ka" ? "Georgian" : "English"}. Agreed work can create Linear issues or add updates to existing issues in this project. Participants receive notes, the transcript, and issue links in the app.</span>
           </label>
           <button type="submit" className={buttonClass.primary} disabled={!consented || pending}>
             {pending ? "Starting…" : "Start call"}
@@ -145,7 +157,7 @@ export function CallPanel(props: { teamId: string; meetingId: string; isOrganize
           {join.persistenceWarning && <p className="text-warning">{join.persistenceWarning}</p>}
           {props.isOrganizer ? (
             <button type="button" className={buttonClass.primary} onClick={() => void endCall()} disabled={pending}>
-              {pending ? "Creating tasks…" : "End and create tasks"}
+              {pending ? "Updating Linear…" : "End and send to Linear"}
             </button>
           ) : (
             <p className="text-muted">Only the organizer can end the call and create tasks.</p>
@@ -153,6 +165,11 @@ export function CallPanel(props: { teamId: string; meetingId: string; isOrganize
         </>
       )}
       {result && <CallOutcome result={result} />}
+      {(result?.error || props.ended || callEnded) && !join && props.isOrganizer && (
+        <button type="button" className={buttonClass.secondary} onClick={() => void endCall()} disabled={pending}>
+          {pending ? "Retrying…" : "Retry processing"}
+        </button>
+      )}
     </div>
   );
 }
@@ -178,7 +195,7 @@ function CallOutcome({ result }: { result: CallFinish }) {
         <ul className="divide-y divide-border rounded-md border border-border">
           {result.tasks.map((task) => (
             <li key={`${task.title}-${task.url ?? task.error}`} className="flex items-center justify-between gap-4 px-3 py-2">
-              <span>{task.title}</span>
+              <span>{task.title}{task.url && <span className="ml-2 text-xs text-muted">{task.operation === "updated" ? "Updated" : "Created"}</span>}{task.error && <span className="block text-xs text-danger">{task.error}</span>}</span>
               {task.url ? (
                 <a href={task.url} target="_blank" rel="noreferrer" className="text-accent">
                   {task.identifier ?? "Open in Linear"}
@@ -200,6 +217,7 @@ function startBrowserSpeech(
   cues: RefObject<Cue[]>,
   speechRef: RefObject<SpeechRec | null>,
   setStatus: (status: string) => void,
+  language: "en" | "ka",
 ): SpeechRec | null {
   if (speechRef.current) return speechRef.current;
   const speechWindow = window as Window & { SpeechRecognition?: new () => SpeechRec; webkitSpeechRecognition?: new () => SpeechRec };
@@ -211,7 +229,7 @@ function startBrowserSpeech(
   const recognition = new ctor() as SpeechRec;
   recognition.continuous = true;
   recognition.interimResults = true;
-  recognition.lang = "en-US";
+  recognition.lang = language === "ka" ? "ka-GE" : "en-US";
   recognition.onresult = (event) => {
     for (let index = event.resultIndex; index < event.results.length; index += 1) {
       const result = event.results[index];

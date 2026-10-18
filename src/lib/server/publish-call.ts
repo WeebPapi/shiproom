@@ -5,26 +5,29 @@ import {
   isTranscript,
   issueDescription,
   parseWebVtt,
-  selectShiproomDestination,
+  selectedLinearDestination,
   shiproomTitle,
-  taskMarker,
   toTranscript,
   type Cue,
 } from "@/lib/call-result";
-import { validateExtractionAgainstTranscript, type LiveCapture, type Transcript } from "@/lib/contracts";
+import { extractionResultSchema, transcriptSchema, validateExtractionAgainstTranscript, type ExtractionResult, type LiveCapture, type Transcript } from "@/lib/contracts";
 import { getPublicEnv } from "@/lib/env";
 import { extractAgreedTasks } from "@/lib/server/claude";
 import { createRoomToken, ensurePrivateRoom, fetchStoredTranscript } from "@/lib/server/daily";
-import { createLinearIssue, findIssueByMarker, listLinearDestinations } from "@/lib/server/linear-personal";
+import { createLinearIssue, fetchLinearIssues, updateLinearIssue } from "@/lib/server/linear";
+import { getLinearAuthorization, getLinearOptions } from "@/lib/server/connections";
+import { fetchPublicRepositoryContext } from "@/lib/server/github";
 import { createAdminClient } from "@/lib/supabase/server";
+import { transcriptionOptions } from "@/lib/transcription";
+import type { Language } from "@/lib/contracts";
 
 const UNSAVED = "The call result was not saved on the meeting. Provider rows need the server database key, which did not accept this write.";
 
 export type CallOpen =
   | { error: string }
-  | { url: string; token: string; roomName: string; transcription: "daily" | "unavailable"; persistenceWarning: string | null };
+  | { url: string; token: string; roomName: string; transcription: "daily" | "unavailable"; transcriptionOptions: ReturnType<typeof transcriptionOptions>; persistenceWarning: string | null };
 
-export type CallTask = { title: string; url: string | null; identifier: string | null; error: string | null };
+export type CallTask = { title: string; url: string | null; identifier: string | null; error: string | null; operation: "created" | "updated" };
 
 export type CallFinish = {
   error: string | null;
@@ -71,15 +74,16 @@ export async function openMeetingCall(input: {
   userId: string;
   displayName: string;
   isOrganizer: boolean;
+  language: Language;
+  contextNames: string[];
 }): Promise<CallOpen> {
-  const room = await ensurePrivateRoom(input.meetingId);
+  const room = await ensurePrivateRoom(input.meetingId, input.language, input.contextNames);
   if ("error" in room) return { error: room.error };
   const token = await createRoomToken({
     roomName: room.name,
     userId: input.userId,
     displayName: input.displayName,
     isOwner: input.isOrganizer,
-    transcribe: room.transcription === "daily",
   });
   if ("error" in token) return { error: token.error };
 
@@ -108,7 +112,7 @@ export async function openMeetingCall(input: {
     if (error) console.error("participant insert failed", error.message);
   }
 
-  return { url: room.url, token: token.token, roomName: room.name, transcription: room.transcription, persistenceWarning };
+  return { url: room.url, token: token.token, roomName: room.name, transcription: room.transcription, transcriptionOptions: transcriptionOptions(input.language, input.contextNames), persistenceWarning };
 }
 
 function sourceNote(kind: CallFinish["transcriptSource"]): string {
@@ -117,22 +121,22 @@ function sourceNote(kind: CallFinish["transcriptSource"]): string {
   return "Transcript source: browser speech recognition of this device's microphone. Daily transcription did not produce a transcript. Other people are included only if this microphone heard them.";
 }
 
-async function captureTranscript(meetingId: string, roomName: string, capture: LiveCapture): Promise<
+async function captureTranscript(meetingId: string, roomName: string, capture: LiveCapture, language: Language): Promise<
   | { transcript: Transcript; kind: NonNullable<CallFinish["transcriptSource"]>; providerId: string | null }
   | { error: string }
 > {
   const stored = await fetchStoredTranscript(roomName);
   if ("vtt" in stored) {
-    const transcript = toTranscript({ meetingId, source: "daily", complete: true, cues: parseWebVtt(stored.vtt) });
+    const transcript = toTranscript({ meetingId, language, source: "daily", complete: true, cues: parseWebVtt(stored.vtt) });
     if (isTranscript(transcript)) return { transcript, kind: "daily-stored", providerId: stored.id };
   }
   const clientCues: Cue[] = capture.segments;
   if (clientCues.length > 0 && capture.origin === "daily-live") {
-    const transcript = toTranscript({ meetingId, source: "daily", complete: false, cues: clientCues });
+    const transcript = toTranscript({ meetingId, language, source: "daily", complete: false, cues: clientCues });
     if (isTranscript(transcript)) return { transcript, kind: "daily-live", providerId: null };
   }
   if (clientCues.length > 0 && capture.origin === "browser") {
-    const transcript = toTranscript({ meetingId, source: "browser", complete: false, cues: clientCues });
+    const transcript = toTranscript({ meetingId, language, source: "browser", complete: false, cues: clientCues });
     if (isTranscript(transcript)) return { transcript, kind: "browser", providerId: null };
   }
   if ("error" in stored) return { error: stored.error };
@@ -146,7 +150,7 @@ async function rememberTranscript(admin: Admin | null, input: { teamId: string; 
     meeting_id: input.meetingId,
     revision: 1,
     source: input.transcript.source,
-    language: "en",
+    language: input.transcript.language,
     provider_transcript_id: input.providerId,
     segments: input.transcript.segments,
     complete: input.transcript.complete,
@@ -161,13 +165,14 @@ async function rememberTranscript(admin: Admin | null, input: { teamId: string; 
 }
 
 async function publishTasks(input: {
-  admin: Admin | null;
+  admin: Admin;
+  authorization: string;
   teamId: string;
   meetingId: string;
   meetingUrl: string;
   organizerId: string;
   transcript: Transcript;
-  tasks: { title: string; description: string; acceptanceCriteria: string[]; evidenceSegmentIds: string[] }[];
+  tasks: ExtractionResult["tasks"];
   destination: { teamId: string; projectId: string | null };
   note: string;
 }): Promise<{ tasks: CallTask[]; persistenceWarning: string | null }> {
@@ -175,7 +180,7 @@ async function publishTasks(input: {
   let persistenceWarning: string | null = null;
   for (const [index, task] of input.tasks.entries()) {
     const ordinal = index + 1;
-    const marker = taskMarker(input.meetingId, ordinal);
+    const operation = task.existingLinearIssueId ? "updated" as const : "created" as const;
     const title = shiproomTitle(task.title);
     const description = issueDescription({
       meetingId: input.meetingId,
@@ -185,47 +190,38 @@ async function publishTasks(input: {
       task,
       transcript: input.transcript,
     });
-    let linearId: string = randomUUID();
-    if (input.admin) {
-      const { data: existing } = await input.admin
-        .from("tasks")
-        .select("linear_issue_uuid, linear_issue_url, linear_issue_identifier, publication_status")
-        .eq("meeting_id", input.meetingId)
-        .eq("ordinal", ordinal)
-        .maybeSingle();
-      if (existing?.publication_status === "published" && existing.linear_issue_url) {
-        results.push({ title: task.title, url: existing.linear_issue_url, identifier: existing.linear_issue_identifier, error: null });
-        continue;
-      }
-      if (existing?.linear_issue_uuid) linearId = String(existing.linear_issue_uuid);
-      else {
-        const { error } = await input.admin.from("tasks").insert({
-          team_id: input.teamId,
-          meeting_id: input.meetingId,
-          transcript_revision: 1,
-          ordinal,
-          payload: task,
-          linear_issue_uuid: linearId,
-          publication_status: "pending",
-        });
-        if (error) {
-          console.error("task insert failed", error.message);
-          persistenceWarning = UNSAVED;
-        }
-      }
-    } else persistenceWarning = UNSAVED;
-
-    const prior = await findIssueByMarker(input.destination.teamId, marker);
-    const created = prior
-      ? { ok: true as const, identifier: prior.identifier, url: prior.url }
-      : await createLinearIssue({ id: linearId, teamId: input.destination.teamId, projectId: input.destination.projectId, title, description });
-    if (!created.ok) {
-      if (input.admin) await input.admin.from("tasks").update({ publication_status: "failed", publication_error: created.error }).eq("meeting_id", input.meetingId).eq("ordinal", ordinal);
-      results.push({ title: task.title, url: null, identifier: null, error: created.error });
+    const { data: existing } = await input.admin
+      .from("tasks")
+      .select("linear_issue_uuid, linear_issue_url, linear_issue_identifier, publication_status")
+      .eq("meeting_id", input.meetingId)
+      .eq("ordinal", ordinal)
+      .maybeSingle();
+    if (existing?.publication_status === "published" && existing.linear_issue_url) {
+      results.push({ title: task.title, url: existing.linear_issue_url, identifier: existing.linear_issue_identifier, error: null, operation });
       continue;
     }
-    results.push({ title: task.title, url: created.url, identifier: created.identifier, error: null });
-    if (!input.admin) continue;
+    if (!existing?.linear_issue_uuid) {
+      persistenceWarning = UNSAVED;
+      results.push({ title: task.title, url: null, identifier: null, error: "The saved action could not be loaded. No issue was changed.", operation });
+      continue;
+    }
+
+
+    let created: Awaited<ReturnType<typeof createLinearIssue>>;
+    try {
+      if (task.existingLinearIssueId) {
+        created = await updateLinearIssue(input.authorization, { id: task.existingLinearIssueId, ...input.destination, updatedAt: task.existingLinearIssueUpdatedAt ?? "", amendment: `### Shiproom meeting update\n\n${description}` });
+      } else {
+        created = await createLinearIssue(input.authorization, { id: String(existing.linear_issue_uuid), teamId: input.destination.teamId, projectId: input.destination.projectId, title, description });
+      }
+    } catch {
+      created = { ok: false, error: "Linear could not be reached. No new issue was confirmed." };
+    }
+    if (!created.ok) {
+      await input.admin.from("tasks").update({ publication_status: "failed", publication_error: created.error }).eq("meeting_id", input.meetingId).eq("ordinal", ordinal);
+      results.push({ title: task.title, url: null, identifier: null, error: created.error, operation });
+      continue;
+    }
     const { data: taskRow } = await input.admin
       .from("tasks")
       .update({ publication_status: "published", linear_issue_url: created.url, linear_issue_identifier: created.identifier, publication_error: null })
@@ -233,10 +229,15 @@ async function publishTasks(input: {
       .eq("ordinal", ordinal)
       .select("id")
       .maybeSingle();
-    if (!taskRow?.id) continue;
+    if (!taskRow?.id) {
+      persistenceWarning = UNSAVED;
+      results.push({ title: task.title, url: created.url, identifier: created.identifier, error: "The issue changed, but its receipt could not be saved. Retry processing.", operation });
+      continue;
+    }
+    results.push({ title: task.title, url: created.url, identifier: created.identifier, error: null, operation });
     const { data: people } = await input.admin.from("meeting_participants").select("user_id").eq("meeting_id", input.meetingId);
     const recipients = new Set([input.organizerId, ...(people ?? []).map((person) => person.user_id as string)]);
-    const { error: notifyError } = await input.admin.from("notifications").insert(
+    const { error: notifyError } = await input.admin.from("notifications").upsert(
       [...recipients].map((recipientId) => ({
         team_id: input.teamId,
         recipient_id: recipientId,
@@ -244,8 +245,8 @@ async function publishTasks(input: {
         kind: "task_ready",
         task_id: taskRow.id,
         linear_issue_url: created.url,
-        title: title.slice(0, 300),
-      })),
+        title: (operation === "updated" ? `Updated ${created.identifier}: ${task.title}` : title).slice(0, 300),
+      })), { onConflict: "recipient_id,task_id", ignoreDuplicates: true },
     );
     if (notifyError && !/duplicate|unique/i.test(notifyError.message)) console.error("notification insert failed", notifyError.message);
   }
@@ -260,35 +261,47 @@ export async function finishMeetingCall(input: {
   capture: LiveCapture;
 }): Promise<CallFinish> {
   const admin = createAdminClient();
-  if (admin) {
-    const { data: existing } = await admin
-      .from("tasks")
-      .select("payload, publication_status, linear_issue_url, linear_issue_identifier")
-      .eq("meeting_id", input.meetingId)
-      .order("ordinal");
-    const rows = existing ?? [];
-    if (rows.some((row) => row.publication_status === "published")) {
-      revalidatePath(`/teams/${input.teamId}/meetings/${input.meetingId}`);
-      return {
+  if (!admin) return emptyFinish("The meeting cannot be saved yet, so no issues will be created. Ask the team owner to finish setup.");
+  const { data: meeting } = await admin.from("meetings")
+    .select("language, github_repository_id, linear_team_id, linear_project_id, processing_status, summary, decisions, open_questions")
+    .eq("id", input.meetingId).eq("team_id", input.teamId).single();
+  if (!meeting) return emptyFinish("This meeting could not be loaded. No issues were created.");
+  const { data: existing, error: tasksError } = await admin
+    .from("tasks")
+    .select("payload, publication_status, linear_issue_url, linear_issue_identifier")
+    .eq("meeting_id", input.meetingId)
+    .order("ordinal");
+  if (tasksError) return emptyFinish("Saved actions could not be loaded. No issues were changed.");
+  const rows = existing ?? [];
+  if ((rows.length > 0 && rows.every((row) => row.publication_status === "published")) || (rows.length === 0 && meeting.processing_status === "complete")) {
+    revalidatePath(`/teams/${input.teamId}/meetings/${input.meetingId}`);
+    return {
+      error: null,
+      transcriptSource: null,
+      transcriptNote: "This meeting's saved actions have already completed.",
+      summary: meeting.summary,
+      decisions: meeting.decisions ?? [],
+      openQuestions: meeting.open_questions ?? [],
+      tasks: rows.map((row) => ({
+        title: row.payload && typeof row.payload === "object" && "title" in row.payload && typeof row.payload.title === "string" ? row.payload.title : "Task",
+        url: row.linear_issue_url as string | null,
+        identifier: (row.linear_issue_identifier as string | null) ?? null,
         error: null,
-        transcriptSource: null,
-        transcriptNote: "Issues were already created for this meeting.",
-        summary: null,
-        decisions: [],
-        openQuestions: [],
-        tasks: rows.map((row) => ({
-          title: row.payload && typeof row.payload === "object" && "title" in row.payload && typeof row.payload.title === "string" ? row.payload.title : "Task",
-          url: row.publication_status === "published" ? (row.linear_issue_url as string | null) : null,
-          identifier: (row.linear_issue_identifier as string | null) ?? null,
-          error: row.publication_status === "published" ? null : "Not created.",
-        })),
-        linearNames: null,
-        persistenceWarning: null,
-      };
-    }
+        operation: row.payload?.existingLinearIssueId ? "updated" : "created",
+      })),
+      linearNames: null,
+      persistenceWarning: null,
+    };
   }
   let persistenceWarning = await patchMeeting(admin, input.meetingId, { capture_status: "finalizing", processing_status: "extracting", ended_at: new Date().toISOString() });
-  const captured = await captureTranscript(input.meetingId, input.roomName, input.capture);
+  const { data: savedTranscript, error: transcriptError } = await admin.from("transcripts").select("source, language, segments, complete, revision")
+    .eq("meeting_id", input.meetingId).eq("revision", 1).maybeSingle();
+  if (transcriptError) return emptyFinish("The saved transcript could not be loaded. No issues were changed.");
+  const parsedTranscript = savedTranscript?.complete ? transcriptSchema.safeParse({ ...savedTranscript, meetingId: input.meetingId }) : null;
+  if (parsedTranscript && !parsedTranscript.success) return emptyFinish("The saved transcript is invalid. No issues were changed.");
+  const captured = parsedTranscript?.success
+    ? { transcript: parsedTranscript.data, kind: "daily-stored" as const, providerId: null }
+    : await captureTranscript(input.meetingId, input.roomName, input.capture, meeting.language);
   if ("error" in captured) {
     await patchMeeting(admin, input.meetingId, { capture_status: "failed", processing_status: "failed", error_stage: "transcript", error_message: captured.error });
     revalidatePath(`/teams/${input.teamId}/meetings/${input.meetingId}`);
@@ -296,11 +309,52 @@ export async function finishMeetingCall(input: {
   }
 
   const note = sourceNote(captured.kind);
-  const saveError = await rememberTranscript(admin, { teamId: input.teamId, meetingId: input.meetingId, transcript: captured.transcript, providerId: captured.providerId });
+  const saveError = savedTranscript?.complete ? null : await rememberTranscript(admin, { teamId: input.teamId, meetingId: input.meetingId, transcript: captured.transcript, providerId: captured.providerId });
   persistenceWarning = persistenceWarning ?? saveError;
   await patchMeeting(admin, input.meetingId, { capture_status: "ready" });
 
-  const extracted = await extractAgreedTasks(captured.transcript);
+  if (saveError) return emptyFinish("The transcript could not be saved, so no issues were created.", { persistenceWarning: saveError });
+  if (!captured.transcript.complete) {
+    const error = "Only a partial transcript is available. No issues were created. Retry when the full stored transcript is ready.";
+    await patchMeeting(admin, input.meetingId, { processing_status: "failed", error_stage: "transcript", error_message: error });
+    revalidatePath(`/teams/${input.teamId}/meetings/${input.meetingId}`);
+    return emptyFinish(error, { transcriptSource: captured.kind, transcriptNote: note });
+  }
+
+  const linear = await getLinearOptions(input.teamId);
+  const destination = linear.status === "ready"
+    ? selectedLinearDestination(linear.teams, meeting?.linear_team_id ?? null, meeting?.linear_project_id ?? null)
+    : null;
+  if (!destination?.ok || !meeting?.github_repository_id) {
+    const error = "Choose an approved repository and connected Linear team before creating issues. Automatic context inference is not available yet.";
+    await patchMeeting(admin, input.meetingId, { processing_status: "needs_context", error_stage: "context", error_message: error });
+    revalidatePath(`/teams/${input.teamId}/meetings/${input.meetingId}`);
+    return emptyFinish(error, { transcriptSource: captured.kind, transcriptNote: note });
+  }
+  const { data: repository } = await admin.from("team_repositories").select("full_name, access")
+    .eq("team_id", input.teamId).eq("github_repository_id", meeting.github_repository_id).single();
+  if (!repository || repository.access !== "public") return emptyFinish("The selected repository is not approved for public source context.");
+  let authorization: string | null;
+  let extracted: Awaited<ReturnType<typeof extractAgreedTasks>>;
+  try {
+    authorization = await getLinearAuthorization(input.teamId);
+    if (!authorization) throw new Error("The team's Linear connection is unavailable.");
+    if (rows.length > 0) {
+      const saved = extractionResultSchema.safeParse({ summary: meeting.summary ?? "", decisions: meeting.decisions ?? [], openQuestions: meeting.open_questions ?? [], tasks: rows.map(row => row.payload) });
+      extracted = saved.success ? { ok: true, result: saved.data } : { ok: false, error: "The saved actions could not be validated. No issues were changed." };
+    } else {
+      const [context, linearIssues] = await Promise.all([
+        fetchPublicRepositoryContext(meeting.github_repository_id, repository.full_name),
+        fetchLinearIssues(authorization, destination.teamId, destination.projectId),
+      ]);
+      extracted = await extractAgreedTasks(captured.transcript, { repository: context, linearTeam: destination.teamName, linearProject: destination.projectName, linearIssues });
+    }
+  } catch {
+    const error = "Meeting context could not be loaded. Check the team's connections and try again.";
+    await patchMeeting(admin, input.meetingId, { processing_status: "failed", error_stage: "context", error_message: error });
+    return emptyFinish(error);
+  }
+
   if (!extracted.ok) {
     await patchMeeting(admin, input.meetingId, { processing_status: "failed", error_stage: "extraction", error_message: extracted.error });
     revalidatePath(`/teams/${input.teamId}/meetings/${input.meetingId}`);
@@ -313,13 +367,14 @@ export async function finishMeetingCall(input: {
     return emptyFinish(error, { transcriptSource: captured.kind, transcriptNote: note, persistenceWarning });
   }
 
-  await patchMeeting(admin, input.meetingId, {
+  const notesError = await patchMeeting(admin, input.meetingId, {
     summary: extracted.result.summary,
     decisions: extracted.result.decisions,
     open_questions: extracted.result.openQuestions,
     error_message: null,
     error_stage: null,
   });
+  if (notesError) return emptyFinish("Meeting notes could not be saved. No issues were changed.", { persistenceWarning: notesError });
   if (extracted.result.tasks.length === 0) {
     await patchMeeting(admin, input.meetingId, { processing_status: "complete" });
     revalidatePath(`/teams/${input.teamId}/meetings/${input.meetingId}`);
@@ -336,40 +391,18 @@ export async function finishMeetingCall(input: {
     };
   }
 
-  const listed = await listLinearDestinations();
-  if (!listed.ok) {
-    await patchMeeting(admin, input.meetingId, { processing_status: "failed", error_stage: "linear", error_message: listed.error });
-    return emptyFinish(listed.error, {
-      transcriptSource: captured.kind,
-      transcriptNote: note,
-      summary: extracted.result.summary,
-      decisions: extracted.result.decisions,
-      openQuestions: extracted.result.openQuestions,
-      persistenceWarning,
-    });
+  if (rows.length === 0) {
+    const { error } = await admin.from("tasks").insert(extracted.result.tasks.map((task, index) => ({
+      team_id: input.teamId, meeting_id: input.meetingId, transcript_revision: 1, ordinal: index + 1,
+      payload: task, linear_issue_uuid: randomUUID(), publication_status: "pending",
+    })));
+    if (error) return emptyFinish("The action batch could not be saved. No issues were changed. Retry processing.");
   }
-  const destination = selectShiproomDestination(listed.teams);
-  if (!destination.ok) {
-    const error = `No Linear team or project name contains "Shiproom", so no issues were created. Visible: ${destination.names.join("; ") || "none"}.`;
-    await patchMeeting(admin, input.meetingId, { processing_status: "failed", error_stage: "linear", error_message: error });
-    revalidatePath(`/teams/${input.teamId}/meetings/${input.meetingId}`);
-    return {
-      error,
-      transcriptSource: captured.kind,
-      transcriptNote: note,
-      summary: extracted.result.summary,
-      decisions: extracted.result.decisions,
-      openQuestions: extracted.result.openQuestions,
-      tasks: extracted.result.tasks.map((task) => ({ title: task.title, url: null, identifier: null, error: "Not created." })),
-      linearNames: destination.names,
-      persistenceWarning,
-    };
-  }
-
   await patchMeeting(admin, input.meetingId, { processing_status: "publishing" });
   const appUrl = getPublicEnv()?.appUrl ?? "";
   const published = await publishTasks({
     admin,
+    authorization,
     teamId: input.teamId,
     meetingId: input.meetingId,
     meetingUrl: `${appUrl}/teams/${input.teamId}/meetings/${input.meetingId}`,
@@ -384,7 +417,7 @@ export async function finishMeetingCall(input: {
   await patchMeeting(admin, input.meetingId, {
     processing_status: failed && created ? "partial_failure" : failed ? "failed" : "complete",
     error_stage: failed ? "linear" : null,
-    error_message: failed ? "Some Linear issues could not be created." : null,
+    error_message: failed ? "Some Linear actions could not be completed." : null,
   });
   revalidatePath(`/teams/${input.teamId}/meetings/${input.meetingId}`);
   return {

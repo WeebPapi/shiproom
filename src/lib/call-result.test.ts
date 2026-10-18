@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { issueDescription, parseWebVtt, selectShiproomDestination, shiproomTitle, toTranscript, isTranscript } from "./call-result";
+import { issueDescription, parseWebVtt, selectedLinearDestination, shiproomTitle, toTranscript, isTranscript } from "./call-result";
 
 const meetingId = "11111111-1111-4111-8111-111111111111";
 
@@ -13,28 +13,25 @@ describe("Daily transcript and Linear destination", () => {
     expect(cues).toEqual([{ speakerLabel: "Speaker 1", text: "Let's add an empty state.", startMs: 1200, endMs: 4600 }]);
   });
 
-  it("refuses teams that are not named Shiproom", () => {
-    const choice = selectShiproomDestination([
-      { id: "arci", name: "ARCI", projects: [{ id: "p1", name: "Platform" }] },
-      { id: "local", name: "Localloop", projects: [{ id: "p2", name: "Georgia MVP — Pilot Launch" }] },
-    ]);
-    expect(choice.ok).toBe(false);
-    if (!choice.ok) expect(choice.names).toEqual(["ARCI / Platform", "Localloop / Georgia MVP — Pilot Launch"]);
+  it("uses the explicitly selected destination when several projects are available", () => {
+    const teams = [{ id: "ship", name: "Shiproom", projects: [{ id: "mvp", name: "Shiproom MVP" }, { id: "demo", name: "Shiproom Demo" }] }];
+    expect(selectedLinearDestination(teams, "ship", "demo")).toMatchObject({ ok: true, teamId: "ship", projectId: "demo" });
+    expect(shiproomTitle("[shiproom] Add empty state")).toBe("[shiproom] Add empty state");
   });
 
-  it("selects the single Shiproom project and prefixes the title once", () => {
-    const choice = selectShiproomDestination([
-      { id: "arci", name: "ARCI", projects: [] },
-      { id: "ship", name: "Other", projects: [{ id: "demo", name: "Shiproom Demo" }] },
-    ]);
-    expect(choice).toMatchObject({ ok: true, teamId: "ship", projectId: "demo" });
-    expect(shiproomTitle("[shiproom] Add empty state")).toBe("[shiproom] Add empty state");
+  it("does not guess missing context or accept a project from another team", () => {
+    const teams = [{ id: "ship", name: "Shiproom", projects: [{ id: "demo", name: "Demo" }] }];
+    expect(selectedLinearDestination(teams, null, null).ok).toBe(false);
+    expect(selectedLinearDestination(teams, "other-team", "demo").ok).toBe(false);
+    expect(selectedLinearDestination(teams, "ship", "other-project").ok).toBe(false);
+    expect(selectedLinearDestination(teams, "ship", null)).toMatchObject({ ok: true, projectId: null });
   });
 
   it("builds an English transcript and cites its evidence", () => {
     const transcript = toTranscript({
       meetingId,
       source: "daily",
+      language: "en",
       complete: true,
       cues: [{ speakerLabel: "Ada", text: "We will add the empty state.", startMs: 0, endMs: 1500 }],
     });

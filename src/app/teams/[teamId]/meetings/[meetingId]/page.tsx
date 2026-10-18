@@ -11,7 +11,7 @@ import { getLinearOptions, listTeamRepositories, type LinearOptionsState } from 
 import { STATUS_LABEL } from "@/lib/server/meetings";
 import { createClient } from "@/lib/supabase/server";
 import { formatInZone } from "@/lib/time";
-import type { CaptureStatus, ProcessingStatus } from "@/lib/contracts";
+import type { CaptureStatus, ProcessingStatus, ExtractionResult, Transcript } from "@/lib/contracts";
 import { CallPanel } from "./call-panel";
 
 type MeetingRow = {
@@ -34,9 +34,10 @@ type MeetingRow = {
   open_questions: string[];
   error_message: string | null;
   organizer_id: string;
+  ended_at: string | null;
 };
 
-type TaskRow = { id: string; ordinal: number; payload: { title?: string }; publication_status: string; linear_issue_url: string | null; linear_issue_identifier: string | null };
+type TaskRow = { id: string; ordinal: number; payload: Partial<ExtractionResult["tasks"][number]>; publication_status: string; linear_issue_url: string | null; linear_issue_identifier: string | null };
 
 export default async function MeetingPage({ params }: { params: Promise<{ teamId: string; meetingId: string }> }) {
   const { teamId, meetingId } = await params;
@@ -47,7 +48,7 @@ export default async function MeetingPage({ params }: { params: Promise<{ teamId
   const { data: meeting } = await supabase
     .from("meetings")
     .select(
-      "id, kind, title, agenda, language, scheduled_start, scheduled_end, timezone, context_mode, github_repository_id, linear_team_id, linear_project_id, capture_status, processing_status, summary, decisions, open_questions, error_message, organizer_id",
+      "id, kind, title, agenda, language, scheduled_start, scheduled_end, timezone, context_mode, github_repository_id, linear_team_id, linear_project_id, capture_status, processing_status, summary, decisions, open_questions, error_message, organizer_id, ended_at",
     )
     .eq("id", meetingId)
     .eq("team_id", teamId)
@@ -56,7 +57,7 @@ export default async function MeetingPage({ params }: { params: Promise<{ teamId
 
   // Not awaited: the Linear API is slow, so only its two properties wait for it.
   const linear = meeting.linear_team_id ? getLinearOptions(teamId) : Promise.resolve(null);
-  const [invitees, tasks, repositories] = await Promise.all([
+  const [invitees, tasks, repositories, transcript] = await Promise.all([
     supabase.from("meeting_invitees").select("user_id, profile:profiles(display_name, github_login)").eq("meeting_id", meetingId),
     supabase
       .from("tasks")
@@ -65,6 +66,7 @@ export default async function MeetingPage({ params }: { params: Promise<{ teamId
       .order("ordinal")
       .returns<TaskRow[]>(),
     listTeamRepositories(teamId),
+    supabase.from("transcripts").select("segments, language, complete, source").eq("meeting_id", meetingId).eq("revision", 1).maybeSingle<Pick<Transcript, "segments" | "language" | "complete" | "source">>(),
   ]);
 
   const repo = repositories.find((r) => r.id === meeting.github_repository_id);
@@ -95,7 +97,9 @@ export default async function MeetingPage({ params }: { params: Promise<{ teamId
           <section aria-labelledby="call-heading">
             <SectionTitle id="call-heading">Call</SectionTitle>
             <div className={`${cardClass} p-4`}>
-              {meeting.kind === "upload" ? (
+              {meeting.processing_status === "complete" ? (
+                <p className="text-muted">This meeting has ended. Its results are below.</p>
+              ) : meeting.kind === "upload" ? (
                 <p className="text-muted">This meeting is an upload. Live calling is not used for it.</p>
               ) : (
                 <CallPanel
@@ -103,14 +107,15 @@ export default async function MeetingPage({ params }: { params: Promise<{ teamId
                   meetingId={meeting.id}
                   isOrganizer={meeting.organizer_id === user.id}
                   dailyReady={Boolean(serverConfig.dailyApiKey())}
-                  georgianMeeting={meeting.language === "ka"}
+                  language={meeting.language}
+                  ended={Boolean(meeting.ended_at)}
                 />
               )}
             </div>
           </section>
 
           <section aria-labelledby="result-heading" className="space-y-4">
-            <SectionTitle id="result-heading">Result</SectionTitle>
+            <SectionTitle id="result-heading">Meeting notes</SectionTitle>
             {meeting.error_message && (
               <p role="alert" className="rounded-md border border-danger/30 bg-danger/5 px-3 py-2 text-danger">
                 {meeting.error_message}
@@ -132,8 +137,10 @@ export default async function MeetingPage({ params }: { params: Promise<{ teamId
             {(tasks.data ?? []).length > 0 ? (
               <ul className={`${cardClass} divide-y divide-border`}>
                 {(tasks.data ?? []).map((task) => (
-                  <li key={task.id} className="flex min-h-10 items-center gap-3 px-4 py-2">
-                    <span className="min-w-0 flex-1">{task.payload.title ?? `Task ${task.ordinal}`}</span>
+                  <li key={task.id} className="px-4 py-3">
+                    <div className="flex min-h-7 items-center gap-3">
+                      <span className="min-w-0 flex-1 font-medium">{task.payload.title ?? `Task ${task.ordinal}`}</span>
+                      {task.linear_issue_url && <span className={badgeClass}>{task.payload.existingLinearIssueId ? "Updated" : "Created"}</span>}
                     {task.linear_issue_url ? (
                       <a
                         href={task.linear_issue_url}
@@ -147,6 +154,31 @@ export default async function MeetingPage({ params }: { params: Promise<{ teamId
                     ) : (
                       <span className={badgeClass}>{task.publication_status}</span>
                     )}
+                    </div>
+                    {task.payload.description && (
+                      <details className="mt-1 text-xs text-muted">
+                        <summary className="cursor-pointer py-1 hover:text-foreground">Details and evidence</summary>
+                        <div className="space-y-3 py-2 leading-relaxed">
+                          <p className="whitespace-pre-wrap">{task.payload.description}</p>
+                          {(task.payload.acceptanceCriteria ?? []).length > 0 && (
+                            <ul className="list-disc space-y-1 pl-4">
+                              {task.payload.acceptanceCriteria?.map((criterion, index) => <li key={index}>{criterion}</li>)}
+                            </ul>
+                          )}
+                          {(task.payload.evidenceSegmentIds ?? []).map((id, index) => {
+                            const segment = transcript.data?.segments.find((segment) => segment.id === id);
+                            return segment ? (
+                              <blockquote key={index} className="border-l-2 border-accent/40 pl-3">
+                                <span className="mr-2 font-mono">{(segment.startMs / 1000).toFixed(1)}s · {segment.speakerLabel ?? "Unknown speaker"}</span>{segment.text}
+                              </blockquote>
+                            ) : null;
+                          })}
+                          {(task.payload.sourceReferences ?? []).filter((source) => source.url.startsWith("https://github.com/") || source.url.startsWith("https://linear.app/")).map((source) => (
+                            <a key={source.url} href={source.url} target="_blank" rel="noreferrer" className="block text-accent hover:underline">{source.kind === "linear" ? "Existing issue" : "Repository context"}</a>
+                          ))}
+                        </div>
+                      </details>
+                    )}
                   </li>
                 ))}
               </ul>
@@ -154,6 +186,25 @@ export default async function MeetingPage({ params }: { params: Promise<{ teamId
               <p className="rounded-lg border border-dashed border-border px-4 py-6 text-center text-muted">No tasks yet.</p>
             )}
           </section>
+          {transcript.data && (
+            <section aria-labelledby="transcript-heading" className="space-y-3">
+              <SectionTitle id="transcript-heading">Transcript</SectionTitle>
+              <p className="text-xs text-muted">
+                Original {transcript.data.language === "ka" ? "Georgian" : "English"} · {transcript.data.complete ? "Full stored transcript" : "Partial capture — not used to create issues"}
+              </p>
+              <details className={cardClass}>
+                <summary className="cursor-pointer px-4 py-3 font-medium">Read transcript ({transcript.data.segments.length} segments)</summary>
+                <ol className="max-h-[32rem] space-y-4 overflow-y-auto border-t border-border p-4" lang={transcript.data.language}>
+                  {transcript.data.segments.map((segment) => (
+                    <li key={segment.id} id={segment.id}>
+                      <p className="mb-1 text-xs text-muted"><span className="font-mono">{(segment.startMs / 1000).toFixed(1)}s–{(segment.endMs / 1000).toFixed(1)}s</span> · {segment.speakerLabel ?? "Unknown speaker"}</p>
+                      <p className="whitespace-pre-wrap leading-relaxed">{segment.text}</p>
+                    </li>
+                  ))}
+                </ol>
+              </details>
+            </section>
+          )}
         </div>
 
         <aside aria-label="Meeting details" className="space-y-6 lg:border-l lg:border-border lg:pl-6">

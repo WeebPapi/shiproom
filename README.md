@@ -4,9 +4,11 @@
 
 Browser-based meetings that turn developer conversations into project work.
 
+Meetings can also add agreed requirements and acceptance criteria to a clearly identified existing Linear issue in the selected project, preserving its current content and linking the update to transcript evidence. See the [existing-ticket demo](docs/demo.md#existing-ticket-edit-demonstration) for the verified synthetic example and current limits.
+
 Shiproom brings a simple, Linear-inspired meeting experience together with Linear project context and GitHub repository context. Teams schedule a planning call or start a huddle, talk normally, and receive links to automatically created `[shiproom]` Linear issues. Each issue explains the agreed work and cites the conversation behind it.
 
-**Status: hackathon slice on top of the identity skeleton; nothing deployed.** Email magic-link sign-in, a Daily call, Claude extraction, and Linear personal-key issues are implemented for English. GitHub sign-in and public repository suggestions are implemented; owners approve repositories for the team's meeting picker. Issues are created only when a Linear team or project name contains "Shiproom". Run it with `npm install && npm run dev`; full commands are in [Development](docs/development.md). Requirements below describe the intended product; they are not claims that the full scope is verified.
+**Status: local hackathon slice; nothing deployed.** GitHub/email sign-in, public repository approval, selected Linear destinations, Daily capture, Claude extraction, and issue publication are implemented. Georgian is the default speech language, with vocabulary hints and requested diarization; notes and tickets are generated in English, preserving the original transcript as evidence. Participants find notes, transcript, and issue links in-app. The personal-key demo is restricted to one configured Shiproom team. Live speech and end-to-end issue delivery still need rehearsal; see [Demo checks](docs/demo.md). Run it with `npm install && npm run dev`; full commands are in [Development](docs/development.md).
 
 ## Start here
 
@@ -25,7 +27,7 @@ Shiproom brings a simple, Linear-inspired meeting experience together with Linea
 
 Both paths use the same processing pipeline. Audio upload is the fallback if live calling or transcript capture misses the delivery gate. Calendar booking uses an in-app calendar and downloadable `.ics` invites. Ticket delivery is in-app only.
 
-Deepgram Nova-3 is the chosen transcription provider for live calls and uploaded audio. Use Next.js + TypeScript, Supabase, Daily for calls with its integrated Deepgram transcription as the first live path, OpenAI structured extraction using the user's existing API account, and Inngest for durable processing. The build is English-first; Georgian stays a selectable target whose quality check is deferred until the English path works. Provider accounts and an end-to-end smoke test are still required; see [Integrations](docs/integrations.md).
+Deepgram Nova-3 is the chosen transcription provider. The current developer slice uses Next.js, Supabase, Daily's integrated transcription, and Claude. The user now prioritizes a Georgian meeting with English output. Upload, inference recovery, and durable Inngest processing remain unfinished; see [Integrations](docs/integrations.md) and [Demo checks](docs/demo.md).
 
 ## Living documentation
 

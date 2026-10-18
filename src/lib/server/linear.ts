@@ -1,12 +1,13 @@
 import "server-only";
 import { z } from "zod";
+import { createHash } from "node:crypto";
 
 const AUTHORIZE_URL = "https://linear.app/oauth/authorize";
 const TOKEN_URL = "https://api.linear.app/oauth/token";
 const GRAPHQL_URL = "https://api.linear.app/graphql";
 const TIMEOUT_MS = 10_000;
 
-export const LINEAR_SCOPES = "read,issues:create";
+export const LINEAR_SCOPES = "read,write";
 export const LINEAR_CALLBACK_PATH = "/api/integrations/linear/callback";
 export const LINEAR_STATE_COOKIE = "shiproom_linear_oauth";
 
@@ -77,11 +78,11 @@ export function refreshLinearTokens(params: { refreshToken: string; clientId: st
   });
 }
 
-async function linearQuery<T>(accessToken: string, query: string, schema: z.ZodType<T>): Promise<T> {
+async function linearQuery<T>(authorization: string, query: string, schema: z.ZodType<T>, variables: Record<string, unknown> = {}): Promise<T> {
   const response = await fetch(GRAPHQL_URL, {
     method: "POST",
-    headers: { "Content-Type": "application/json", Authorization: `Bearer ${accessToken}` },
-    body: JSON.stringify({ query }),
+    headers: { "Content-Type": "application/json", Authorization: authorization },
+    body: JSON.stringify({ query, variables }),
     signal: AbortSignal.timeout(TIMEOUT_MS),
     cache: "no-store",
   });
@@ -98,7 +99,7 @@ const organizationSchema = z.object({
 });
 
 export async function fetchLinearOrganization(accessToken: string) {
-  const data = await linearQuery(accessToken, `query { organization { id name urlKey } }`, organizationSchema);
+  const data = await linearQuery(`Bearer ${accessToken}`, `query { organization { id name urlKey } }`, organizationSchema);
   return data.organization;
 }
 
@@ -117,12 +118,93 @@ const contextSchema = z.object({
 
 export type LinearTeamOption = { id: string; name: string; key: string; projects: { id: string; name: string }[] };
 
-// shortcut: first 100 teams/projects only, no pagination; enough for one demo workspace.
-export async function fetchLinearContextOptions(accessToken: string): Promise<LinearTeamOption[]> {
+// shortcut: first 50 teams/projects only to stay within Linear's query budget; paginate for larger workspaces.
+export async function fetchLinearContextOptions(authorization: string): Promise<LinearTeamOption[]> {
   const data = await linearQuery(
-    accessToken,
-    `query { teams(first: 100) { nodes { id name key projects(first: 100) { nodes { id name } } } } }`,
+    authorization,
+    `query { teams(first: 50) { nodes { id name key projects(first: 50) { nodes { id name } } } } }`,
     contextSchema,
   );
   return data.teams.nodes.map((t) => ({ id: t.id, name: t.name, key: t.key, projects: t.projects.nodes }));
+}
+
+const issueSchema = z.object({ id: z.string(), team: z.object({ id: z.string() }), project: z.object({ id: z.string() }).nullable(), identifier: z.string(), url: z.url(), description: z.string().nullable() });
+
+const contextIssueSchema = issueSchema.extend({ title: z.string(), updatedAt: z.string() });
+export type LinearIssueContext = z.infer<typeof contextIssueSchema>;
+
+function contentMarker(description: string): string {
+  return `shiproom-content:${createHash("sha256").update(description).digest("hex")}`;
+}
+
+// shortcut: context includes the 25 most recently updated issues, add scoped search/pagination for larger projects.
+export async function fetchLinearIssues(authorization: string, teamId: string, projectId: string | null): Promise<LinearIssueContext[]> {
+  const data = await linearQuery(authorization,
+    `query($filter: IssueFilter!) { issues(first: 25, orderBy: updatedAt, filter: $filter) { nodes { id title updatedAt identifier url description team { id } project { id } } } }`,
+    z.object({ issues: z.object({ nodes: z.array(contextIssueSchema) }) }),
+    { filter: { team: { id: { eq: teamId } }, project: projectId ? { id: { eq: projectId } } : { null: true } } });
+  if (data.issues.nodes.some(issue => issue.team.id !== teamId || (issue.project?.id ?? null) !== projectId)) throw new Error("Linear returned issues outside the selected destination.");
+  return data.issues.nodes.map(issue => ({ ...issue, description: issue.description?.slice(0, 2000) ?? null }));
+}
+
+async function fetchLinearIssue(authorization: string, id: string) {
+  const data = await linearQuery(authorization,
+    `query($id: String!) { issue(id: $id) { id title updatedAt identifier url description team { id } project { id } } }`,
+    z.object({ issue: contextIssueSchema.nullable() }), { id });
+  return data.issue;
+}
+
+/** Append a grounded amendment; never replace existing content with model output. */
+export async function updateLinearIssue(authorization: string, input: { id: string; teamId: string; projectId: string | null; updatedAt: string; amendment: string }) {
+  const marker = contentMarker(input.amendment);
+  const matches = (issue: LinearIssueContext | null) => issue?.id === input.id && issue.team.id === input.teamId && (issue.project?.id ?? null) === input.projectId;
+  try {
+    const current = await fetchLinearIssue(authorization, input.id);
+    if (!matches(current) || !current) return { ok: false as const, error: "The existing issue is no longer in the selected team/project. No update was made." };
+    if (current.description?.includes(marker)) return { ok: true as const, ...current };
+    if (current.updatedAt !== input.updatedAt) return { ok: false as const, error: "This issue changed after it was analyzed. No update was made; review it in Linear." };
+    const description = [current.description, input.amendment, marker].filter(Boolean).join("\n\n");
+    if (description.length > 100_000) return { ok: false as const, error: "The issue is too long to amend safely. No update was made." };
+    // shortcut: Linear has no atomic description append/CAS, simultaneous edits in this read/write window need collaborative editing support.
+    const data = await linearQuery(authorization,
+      `mutation($id: String!, $input: IssueUpdateInput!) { issueUpdate(id: $id, input: $input) { success issue { id title updatedAt identifier url description team { id } project { id } } } }`,
+      z.object({ issueUpdate: z.object({ success: z.boolean(), issue: contextIssueSchema.nullable() }) }), { id: input.id, input: { description } });
+    const issue = data.issueUpdate.issue;
+    if (data.issueUpdate.success && matches(issue) && issue?.description?.includes(marker)) return { ok: true as const, ...issue };
+  } catch {
+    // A timed-out update may have succeeded; reconcile only this target and saved amendment.
+  }
+  try {
+    const issue = await fetchLinearIssue(authorization, input.id);
+    if (matches(issue) && issue?.description?.includes(marker)) return { ok: true as const, ...issue };
+  } catch {
+    // Retain the saved action for retry without falling back to issue creation.
+  }
+  return { ok: false as const, error: "Linear could not confirm the update. Retry the saved action; no replacement issue will be created." };
+}
+
+export async function createLinearIssue(authorization: string, input: { id: string; teamId: string; projectId: string | null; title: string; description: string }) {
+  const marker = contentMarker(input.description);
+  try {
+    const data = await linearQuery(authorization,
+      `mutation($input: IssueCreateInput!) { issueCreate(input: $input) { success issue { id team { id } project { id } identifier url description } } }`,
+      z.object({ issueCreate: z.object({ success: z.boolean(), issue: issueSchema.nullable() }) }),
+      { input: { id: input.id, teamId: input.teamId, ...(input.projectId ? { projectId: input.projectId } : {}), title: input.title, description: `${input.description}\n\n${marker}` } });
+    const issue = data.issueCreate.issue;
+    if (data.issueCreate.success && issue && issue.id === input.id && issue.team.id === input.teamId && (issue.project?.id ?? null) === input.projectId && issue.description?.includes(marker)) return { ok: true as const, ...issue };
+    return { ok: false as const, error: "Linear did not create the issue." };
+  } catch {
+    try {
+      const data = await linearQuery(authorization,
+        `query($id: String!) { issue(id: $id) { id team { id } project { id } identifier url description } }`,
+        z.object({ issue: issueSchema.nullable() }), { id: input.id });
+      const issue = data.issue;
+      if (issue && issue.id === input.id && issue.team.id === input.teamId && (issue.project?.id ?? null) === input.projectId && issue.description?.includes(marker)) {
+        return { ok: true as const, ...issue };
+      }
+    } catch {
+      // Keep the persisted issue UUID for reconciliation on retry.
+    }
+    return { ok: false as const, error: "Linear could not confirm issue creation. Retry with the saved task identity." };
+  }
 }

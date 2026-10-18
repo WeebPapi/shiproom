@@ -40,7 +40,7 @@ describe("shared contracts", () => {
     ).toBe(false);
   });
 
-  it("defaults meetings to English and requires schedule only for scheduled calls", () => {
+  it("defaults meetings to Georgian and requires schedule only for scheduled calls", () => {
     const base = {
       teamId: meetingId,
       kind: "huddle",
@@ -48,7 +48,7 @@ describe("shared contracts", () => {
       context: { githubRepositoryId: null, linearTeamId: null, linearProjectId: null },
       schedule: null,
     };
-    expect(meetingInputSchema.parse(base).language).toBe("en");
+    expect(meetingInputSchema.parse(base).language).toBe("ka");
     expect(meetingInputSchema.safeParse({ ...base, kind: "scheduled" }).success).toBe(false);
     expect(contextModeFor(base.context)).toBe("infer");
     expect(contextModeFor({ githubRepositoryId: "1", linearTeamId: null, linearProjectId: null })).toBe("mixed");

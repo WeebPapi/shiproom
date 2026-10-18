@@ -22,6 +22,10 @@ Use only authorized team/repo/project context when adding meeting-specific names
 
 ## Supplying the hints
 
+The app now loads this catalog in `src/lib/transcription.ts`: authorized context names first, then previous suggestions and user-supplied terms, with case-insensitive deduplication, at most 40 terms, and a conservative 400-byte UTF-8 cap. This is a bounded demo shortlist, not an accuracy-tuned vocabulary or a measured provider token count. Daily room settings and `startTranscription` pass it as `extra.keyterm` with Nova-3 and the saved meeting language. `extra.diarize_model=latest` also requests streaming speaker diarization. The provider remains authoritative about acceptance and limits; transcription errors are visible and partial capture cannot publish issues.
+
+On 2026-10-18 Daily accepted the room settings and direct Deepgram accepted a silent WAV using Georgian, these repeated keyterms, and diarization. This verifies configuration acceptance only. Daily's live forwarding, original speech recognition, speaker separation (especially a shared microphone), and hint efficacy still need the live rehearsal in [Demo checks](demo.md).
+
 In the Deepgram Playground: **Features → Transcription → Keyterm Prompting**. Put each word/phrase in its own field; use **+ More Keyterm Prompting Terms** to add another. Keep Nova-3 and the chosen language fixed when comparing runs. A multiline catalog is not one combined hint.
 
 For the direct API, append a separate `keyterm` query parameter per string, using normal UTF-8 URL encoding. Keep spaces inside a phrase. Do not join the whole list with commas, add weights, or use the legacy `keywords` parameter. For Daily's integrated route, verify the supported forwarding of keyterms and that the intended model/language/hints actually reach Deepgram before claiming parity with direct API tests.

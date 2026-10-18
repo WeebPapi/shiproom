@@ -52,27 +52,12 @@ export function visibleLinearNames(teams: LinearTeamList[]): string[] {
   );
 }
 
-const namedShiproom = (name: string) => name.toLowerCase().includes("shiproom");
-
-/**
- * One Shiproom project wins. Otherwise one Shiproom team, with no project.
- * Anything else, including ARCI, blocks creation.
- */
-export function selectShiproomDestination(teams: LinearTeamList[]): DestinationChoice {
-  const names = visibleLinearNames(teams);
-  const projects = teams.flatMap((team) =>
-    team.projects
-      .filter((project) => namedShiproom(project.name))
-      .map((project) => ({ teamId: team.id, teamName: team.name, projectId: project.id, projectName: project.name })),
-  );
-  if (projects.length === 1) return { ok: true, ...projects[0] };
-  if (projects.length > 1) return { ok: false, names };
-  const matchingTeams = teams.filter((team) => namedShiproom(team.name));
-  if (matchingTeams.length === 1) {
-    const team = matchingTeams[0];
-    return { ok: true, teamId: team.id, teamName: team.name, projectId: null, projectName: null };
-  }
-  return { ok: false, names };
+/** Explicit selections win; inference is handled separately and never guesses a destination. */
+export function selectedLinearDestination(teams: LinearTeamList[], teamId: string | null, projectId: string | null): DestinationChoice {
+  const team = teams.find((team) => team.id === teamId);
+  const project = team?.projects.find((project) => project.id === projectId);
+  if (!team || (projectId && !project)) return { ok: false, names: visibleLinearNames(teams) };
+  return { ok: true, teamId: team.id, teamName: team.name, projectId: project?.id ?? null, projectName: project?.name ?? null };
 }
 
 export function shiproomTitle(title: string): string {
@@ -87,6 +72,7 @@ export function taskMarker(meetingId: string, ordinal: number): string {
 export function toTranscript(input: {
   meetingId: string;
   source: Transcript["source"];
+  language: Transcript["language"];
   complete: boolean;
   cues: Cue[];
 }): Transcript | { error: string } {
@@ -95,8 +81,8 @@ export function toTranscript(input: {
     revision: 1,
     source: input.source,
     complete: input.complete,
-    language: "en",
-    segments: input.cues.slice(0, 2_000).map((cue, index) => ({
+    language: input.language,
+    segments: input.cues.map((cue, index) => ({
       id: `seg-${String(index + 1).padStart(4, "0")}`,
       startMs: cue.startMs,
       endMs: cue.endMs,
@@ -119,13 +105,13 @@ export function issueDescription(input: {
   meetingUrl: string;
   ordinal: number;
   sourceNote: string;
-  task: { description: string; acceptanceCriteria: string[]; evidenceSegmentIds: string[] };
+  task: { description: string; acceptanceCriteria: string[]; evidenceSegmentIds: string[]; sourceReferences?: { url: string }[] };
   transcript: Transcript;
 }): string {
   const evidence = input.task.evidenceSegmentIds.map((id) => {
     const segment = input.transcript.segments.find((item) => item.id === id);
     if (!segment) return id;
-    return `${id} (${(segment.startMs / 1000).toFixed(1)}s–${(segment.endMs / 1000).toFixed(1)}s): ${segment.text}`;
+    return `${id} (${(segment.startMs / 1000).toFixed(1)}s–${(segment.endMs / 1000).toFixed(1)}s, ${segment.speakerLabel ?? "Unknown speaker"}): ${segment.text}`;
   });
   const criteria = input.task.acceptanceCriteria.length
     ? `Acceptance criteria:\n${input.task.acceptanceCriteria.map((item) => `- ${item}`).join("\n")}`
@@ -134,6 +120,7 @@ export function issueDescription(input: {
     input.task.description,
     criteria,
     `Evidence:\n${evidence.map((line) => `- ${line}`).join("\n")}`,
+    ...(input.task.sourceReferences ?? []).map((source) => `Source: ${source.url}`),
     `Meeting: ${input.meetingUrl}`,
     input.sourceNote,
     taskMarker(input.meetingId, input.ordinal),

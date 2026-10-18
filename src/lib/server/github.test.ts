@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { fetchPublicRepository, listPublicRepositories } from "./github";
+import { fetchPublicRepository, fetchPublicRepositoryContext, listPublicRepositories } from "./github";
 
 vi.mock("server-only", () => ({}));
 
@@ -29,5 +29,20 @@ describe("public GitHub context", () => {
   it("rechecks public visibility before approving a repository", async () => {
     vi.stubGlobal("fetch", vi.fn().mockResolvedValue(Response.json({ ...repository, private: true })));
     expect(await fetchPublicRepository("example/demo")).toEqual({ ok: false, reason: "not_found_or_private" });
+  });
+
+  it("loads a bounded README for the approved public repository", async () => {
+    const text = "a".repeat(16_001);
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValueOnce(Response.json(repository)).mockResolvedValueOnce(
+      Response.json({ encoding: "base64", content: Buffer.from(text).toString("base64") }),
+    ));
+    const context = await fetchPublicRepositoryContext("123", "example/demo");
+    expect(context).toMatchObject({ id: "123", fullName: "example/demo", truncated: true });
+    expect(context.readme).toHaveLength(16_000);
+  });
+
+  it("blocks source reads if an approved owner/name now points at another repository ID", async () => {
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(Response.json({ ...repository, id: 999 })));
+    await expect(fetchPublicRepositoryContext("123", "example/demo")).rejects.toThrow("no longer available");
   });
 });

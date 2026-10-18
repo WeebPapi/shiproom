@@ -1,5 +1,7 @@
 import "server-only";
 import { serverConfig } from "@/lib/server/config";
+import { transcriptionOptions } from "@/lib/transcription";
+import type { Language } from "@/lib/contracts";
 
 const DAILY = "https://api.daily.co/v1";
 
@@ -39,11 +41,14 @@ function roomFrom(
 }
 
 /** Private room, reused by meeting id. Transcription storage is requested and reported honestly. */
-export async function ensurePrivateRoom(meetingId: string): Promise<DailyRoom | { error: string }> {
+export async function ensurePrivateRoom(meetingId: string, language: Language, contextNames: string[]): Promise<DailyRoom | { error: string }> {
   const name = `sr${meetingId.replaceAll("-", "")}`;
+  const settings = transcriptionOptions(language, contextNames);
   const existing = await daily(`/rooms/${encodeURIComponent(name)}`);
   if (existing.ok) {
-    const room = roomFrom((await existing.json()) as { name?: string; url?: string; config?: { enable_transcription_storage?: boolean } }, "daily");
+    const updated = await daily(`/rooms/${encodeURIComponent(name)}`, { method: "POST", body: JSON.stringify({ properties: { enable_transcription_storage: true, auto_transcription_settings: settings } }) });
+    if (!updated.ok) return { error: await errorText(updated) };
+    const room = roomFrom(await updated.json(), "daily");
     if (room) return room;
   }
   const exp = Math.floor(Date.now() / 1000) + 4 * 60 * 60;
@@ -53,7 +58,7 @@ export async function ensurePrivateRoom(meetingId: string): Promise<DailyRoom | 
     enable_screenshare: true,
     max_participants: 8,
     enable_transcription_storage: true,
-    auto_transcription_settings: { language: "en" },
+    auto_transcription_settings: settings,
   };
   let created = await daily("/rooms", { method: "POST", body: JSON.stringify({ name, privacy: "private", properties }) });
   let transcription: "daily" | "unavailable" = "daily";
@@ -70,7 +75,7 @@ export async function ensurePrivateRoom(meetingId: string): Promise<DailyRoom | 
 }
 
 /** Room-scoped token. Two hours, and it cannot join any other room. */
-export async function createRoomToken(input: { roomName: string; userId: string; displayName: string; isOwner: boolean; transcribe: boolean }): Promise<{ token: string } | { error: string }> {
+export async function createRoomToken(input: { roomName: string; userId: string; displayName: string; isOwner: boolean }): Promise<{ token: string } | { error: string }> {
   const response = await daily("/meeting-tokens", {
     method: "POST",
     body: JSON.stringify({
@@ -81,7 +86,6 @@ export async function createRoomToken(input: { roomName: string; userId: string;
         eject_at_token_exp: true,
         user_name: input.displayName.slice(0, 80) || "Shiproom",
         user_id: input.userId,
-        auto_start_transcription: input.isOwner && input.transcribe,
       },
     }),
   });

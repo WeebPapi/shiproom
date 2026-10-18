@@ -6,6 +6,7 @@ import { buttonClass, inputClass, labelClass } from "@/components/styles";
 import { FieldError, FormStatus, SubmitButton } from "@/components/ui";
 import { createMeeting } from "@/lib/actions/meetings";
 import { initialActionState, type ActionState } from "@/lib/actions/state";
+import { DEFAULT_LANGUAGE } from "@/lib/contracts";
 import type { LinearOptionsState, RepositoryOption } from "@/lib/server/connections";
 
 type Member = { id: string; name: string };
@@ -14,7 +15,7 @@ type Kind = "scheduled" | "huddle";
 const LINEAR_UNAVAILABLE: Record<Exclude<LinearOptionsState["status"], "ready">, string> = {
   not_configured: "Linear isn't set up on this server yet.",
   disconnected: "Linear isn't connected. A team owner can connect it under Connections.",
-  reconnect_required: "Linear access expired. A team owner needs to reconnect it under Connections.",
+  reconnect_required: "A team owner needs to reconnect Linear under Connections to restore issue access and editing permissions.",
   unavailable: "Linear couldn't be reached right now. Try again shortly.",
 };
 
@@ -155,7 +156,7 @@ export function MeetingDialog(props: {
               <label htmlFor="meeting-language" className={labelClass}>
                 Transcription language
               </label>
-              <select id="meeting-language" name="language" defaultValue="en" className={inputClass}>
+              <select id="meeting-language" name="language" defaultValue={DEFAULT_LANGUAGE} className={inputClass}>
                 <option value="en">English</option>
                 <option value="ka">Georgian (experimental)</option>
               </select>
@@ -186,7 +187,7 @@ export function MeetingDialog(props: {
             </fieldset>
 
             <p className="rounded-md bg-subtle px-3 py-2.5 text-xs leading-relaxed text-muted">
-              After the call, agreed tasks become <code>[shiproom]</code> Linear issues automatically, and everyone who joined gets the links in their
+              After the call, agreed work creates <code>[shiproom]</code> Linear issues or adds updates to existing issues automatically. Everyone who joined gets the links in their
               inbox. If Shiproom can&apos;t tell where work belongs, it asks you before creating anything.
             </p>
 

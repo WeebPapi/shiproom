@@ -7,8 +7,8 @@ export const MAX_TASKS_PER_MEETING = 10;
 
 export const languageSchema = z.enum(["en", "ka"]);
 export type Language = z.infer<typeof languageSchema>;
-/** English-first build: Georgian stays selectable, English is the default. */
-export const DEFAULT_LANGUAGE: Language = "en";
+/** Georgian demo speech; generated notes and tickets use English. */
+export const DEFAULT_LANGUAGE: Language = "ka";
 
 export const meetingKindSchema = z.enum(["scheduled", "huddle", "upload"]);
 export const captureStatusSchema = z.enum(["pending", "live", "finalizing", "uploading", "transcribing", "ready", "failed"]);
@@ -155,6 +155,7 @@ export const extractedTaskSchema = z.object({
   evidenceSegmentIds: z.array(z.string().min(1).max(64)).min(1),
   assigneeUserId: uuid.nullable().optional(),
   existingLinearIssueId: id.nullable().optional(),
+  existingLinearIssueUpdatedAt: z.string().nullable().optional(),
   sourceReferences: z.array(z.object({ kind: z.enum(["github", "linear"]), url: z.url() })).max(20).default([]),
 });
 

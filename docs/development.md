@@ -2,7 +2,7 @@
 
 ## Current repository
 
-The identity-lane skeleton exists: a Next.js 16.4 App Router app (TypeScript, Tailwind 4, npm, Node 24), Supabase SSR auth, one checked-in schema migration with RLS, and focused tests. Media, transcription, extraction, Inngest, and issue publication are not built. No CI pipeline or deployment exists. Read [AGENTS.md](../AGENTS.md) before editing; scope is [Product](product.md), boundaries are [Architecture](architecture.md).
+The identity-lane skeleton exists: a Next.js 16.4 App Router app (TypeScript, Tailwind 4, npm, Node 24), Supabase SSR auth, one checked-in schema migration with RLS, and focused tests. A selected-context Daily/Claude/Linear slice is implemented; live capture/publication remains unverified, and Inngest/upload are not built. No CI pipeline or deployment exists. Read [AGENTS.md](../AGENTS.md) before editing; scope is [Product](product.md), boundaries are [Architecture](architecture.md).
 
 This Next.js version differs from older training data. Read the relevant guide in `node_modules/next/dist/docs/` before using a Next.js API (for example, `middleware` is now `src/proxy.ts`). `next dev` appends a Next.js agent-rules block to `AGENTS.md`; keep it committed.
 
@@ -57,7 +57,7 @@ The app reads `NEXT_PUBLIC_APP_URL`, `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SU
 - `GITHUB_APP_ID`, `GITHUB_APP_PRIVATE_KEY`: selected-repository installation access for private context. Store installation/team mappings in the database. Public-only context fallback must be visible in status; do not request broad write scopes to save setup time.
 - `DAILY_API_KEY`, `DAILY_WEBHOOK_SECRET`: server room/transcript operations and base64 webhook HMAC secret. The browser receives only short-lived room tokens.
 - `DEEPGRAM_API_KEY`: server upload transcription; document callback authentication/correlation secrets if that mode is used.
-- Vocabulary is checked-in UTF-8 data in [transcription-vocabulary.json](transcription-vocabulary.json), with [usage guidance](transcription-vocabulary.md). The future integration should load a relevant subset and add authorized meeting context; do not introduce a second hand-maintained hint list.
+- Vocabulary is checked-in UTF-8 data in [transcription-vocabulary.json](transcription-vocabulary.json), with [usage guidance](transcription-vocabulary.md). The live settings helper loads a bounded subset and adds authorized meeting context; do not introduce a second hand-maintained hint list.
 - `OPENAI_API_KEY`, `OPENAI_MODEL`: server extraction through the Responses API; initial model is `gpt-5-mini`, pending account-access and structured-output smoke tests. See [Integrations](integrations.md).
 - `ANTHROPIC_API_KEY`: server-only; this developer's extraction path uses Anthropic Claude (see [Decisions](decisions.md)).
 - `INNGEST_EVENT_KEY`, `INNGEST_SIGNING_KEY`: durable workflow transport and verification; local SDK/dev-server configuration must match the selected version. Record deployment synchronization instructions.
@@ -67,6 +67,10 @@ Verify the intended hosting plan's request durations, upload limits, scheduled j
 Provider status is in [Setup](setup.md#agent-visible-status). Daily room creation was smoke-tested without printing the key (private room, meeting token, delete). A live transcript, Claude extraction, and Linear issue creation have not been verified end to end.
 
 ## Contribution workflow
+
+For the preconfigured personal-key demo, set `LINEAR_DEMO_TEAM_ID` to the single authorized Shiproom app team ID in ignored `.env.local` alongside `LINEAR_API_KEY`. Other teams do not inherit that key. OAuth remains the normal connected-team path. The recording walkthrough and precise live gates are in [Demo checks](demo.md).
+
+Current transcription settings come from `src/lib/transcription.ts` and the shared vocabulary catalog: Nova-3, saved meeting language (new meetings default to Georgian), separate keyterms, and requested diarization. Claude requests English output; original transcript evidence is retained. The meeting result includes a full transcript and inbox recap. A partial fallback cannot create issues; the organizer can retry processing, including after refreshing the ended meeting.
 
 1. Check the current working tree and read the code/documents touched by the task. Identify the owning lane and shared contracts before editing.
 2. Implement a small complete slice, including authorization and failure handling. Preserve other developers' uncommitted work.
@@ -81,3 +85,5 @@ Documentation guidance lives in both [AGENTS.md](../AGENTS.md) and [CLAUDE.md](.
 Use invented participant names and synthetic audio/transcripts in committed fixtures. Reference acceptance IDs AC1-AC9 from [Product](product.md) in verification notes, including native-speaker review for the Georgian target. Keep real-workspace smoke-test evidence brief: date, commit, provider behavior checked, result, and any limit; do not copy sensitive payloads into the repo.
 
 The public demo must disclose preconfigured connections, public-only GitHub context, upload-only capture, or any other scope reduction that remains. The spec describes the intended product; status documents what the current build can actually do.
+
+The existing-issue edit slice uses OAuth `read,write`; older create-only connections must reconnect. The personal demo key also needs issue-update permission. No new schema/env variable is required: action targets and their server-read versions are frozen in task payload JSON before publication. See [Architecture](architecture.md#external-write-safety) for description appends, content receipts, and concurrency limits.

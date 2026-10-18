@@ -11,6 +11,8 @@ const repositorySchema = z.object({
 
 export type PublicRepository = z.infer<typeof repositorySchema>;
 
+export type RepositoryContext = { id: string; fullName: string; url: string; readme: string; truncated: boolean };
+
 export type RepositoryLookup =
   | { ok: true; repository: PublicRepository }
   | { ok: false; reason: "not_found_or_private" | "rate_limited" | "unavailable" };
@@ -63,4 +65,17 @@ export async function fetchPublicRepository(fullName: string): Promise<Repositor
   } catch {
     return { ok: false, reason: "unavailable" };
   }
+}
+
+/** Revalidates the approved ID and public visibility before reading bounded source context. */
+export async function fetchPublicRepositoryContext(id: string, fullName: string): Promise<RepositoryContext> {
+  const lookup = await fetchPublicRepository(fullName);
+  if (!lookup.ok || String(lookup.repository.id) !== id) throw new Error("The approved repository is no longer available as public context.");
+  const repository = lookup.repository;
+  const response = await githubFetch(`/repositories/${id}/readme`);
+  if (response.status === 404) return { id, fullName: repository.full_name, url: repository.html_url, readme: "", truncated: false };
+  if (!response.ok) throw new Error("Repository context could not be loaded. Try again shortly.");
+  const readme = z.object({ content: z.string().max(1_400_000), encoding: z.literal("base64") }).parse(await response.json());
+  const text = Buffer.from(readme.content, "base64").toString("utf8");
+  return { id, fullName: repository.full_name, url: repository.html_url, readme: text.slice(0, 16_000), truncated: text.length > 16_000 };
 }

@@ -3,7 +3,6 @@ import { beforeEach, expect, it, vi } from "vitest";
 import { GET } from "./route";
 
 const exchange = vi.hoisted(() => vi.fn());
-vi.mock("@/lib/redirect", () => import("../../../lib/redirect"));
 vi.mock("@/lib/supabase/server", () => ({ createClient: async () => ({ auth: { exchangeCodeForSession: exchange } }) }));
 
 beforeEach(() => exchange.mockReset());

@@ -3,7 +3,7 @@ import { PageBody, PageHeader, SectionTitle } from "@/components/page-parts";
 import { badgeClass, buttonClass, cardClass } from "@/components/styles";
 import { disconnectLinear, startLinearConnection } from "@/lib/actions/team";
 import { requireMembership } from "@/lib/server/auth";
-import { integrationReadiness } from "@/lib/server/config";
+import { integrationReadiness, serverConfig } from "@/lib/server/config";
 import { listTeamRepositories } from "@/lib/server/connections";
 import { createClient } from "@/lib/supabase/server";
 import { listPublicRepositories } from "@/lib/server/github";
@@ -30,6 +30,7 @@ export default async function ConnectionsPage({
   const { membership, user } = await requireMembership(teamId);
   const isOwner = membership.role === "owner";
   const readiness = integrationReadiness();
+  const demoLinear = serverConfig.linearDemoTeamId() === teamId && readiness.linearPersonal === "configured";
 
   const supabase = await createClient();
   const [{ data: linear }, repositories, githubRepos] = await Promise.all([
@@ -63,8 +64,8 @@ export default async function ConnectionsPage({
               Linear
             </h2>
             <span className={badgeClass}>
-              <span aria-hidden className={`size-1.5 rounded-full ${linear?.status === "active" ? "bg-success" : linear ? "bg-warning" : "bg-muted/50"}`} />
-              {!linear ? "Not connected" : linear.status === "active" ? "Connected" : "Reconnect required"}
+              <span aria-hidden className={`size-1.5 rounded-full ${linear?.status === "active" || demoLinear ? "bg-success" : linear ? "bg-warning" : "bg-muted/50"}`} />
+              {demoLinear && !linear ? "Demo connection" : !linear ? "Not connected" : linear.status === "active" ? "Connected" : "Reconnect required"}
             </span>
           </div>
           <div className="space-y-3 p-4">
@@ -79,17 +80,16 @@ export default async function ConnectionsPage({
                   ) : (
                     linear.external_account_name
                   )}
-                  . Shiproom can read teams and projects and create issues.
+                  . Shiproom can read project context, create issues, and add agreed updates to existing issues. Reconnect older connections to grant issue editing.
                 </>
               ) : (
-                "Connect the team's Linear workspace so meetings can create issues there."
+                "Connect the team's Linear workspace so meetings can create and update issues there."
               )}
             </p>
             {readiness.linearOAuth === "not_configured" ? (
-              readiness.linearPersonal === "configured" ? (
+              demoLinear ? (
                 <p className="text-muted">
-                  OAuth isn&apos;t configured. This hackathon path creates issues with the server&apos;s Linear personal key, and only when a team or project
-                  name contains Shiproom.
+                  This team uses a preconfigured demo connection. Choose a Shiproom Linear team and project when starting a meeting; issue creation and agreed updates stay within that selection.
                 </p>
               ) : (
                 <p className="text-warning">Linear isn&apos;t set up on this server yet.</p>

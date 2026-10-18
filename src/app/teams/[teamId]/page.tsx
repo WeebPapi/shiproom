@@ -4,7 +4,6 @@ import { Icon } from "@/components/icons";
 import { PageBody, PageHeader, SectionTitle } from "@/components/page-parts";
 import { badgeClass, cardClass, rowClass } from "@/components/styles";
 import { requireMembership } from "@/lib/server/auth";
-import { integrationReadiness } from "@/lib/server/config";
 import { getLinearOptions, listTeamRepositories, type LinearOptionsState } from "@/lib/server/connections";
 import { listTeamMeetings, listTeamMembers, STATUS_LABEL, type MeetingSummary } from "@/lib/server/meetings";
 import { formatInZone } from "@/lib/time";
@@ -51,7 +50,7 @@ async function SetupChecklist(props: { teamId: string; linear: Promise<LinearOpt
   const base = `/teams/${props.teamId}`;
   const linear = await props.linear;
   const setup = [
-    { label: "Connect Linear", href: `${base}/settings/connections`, done: linear.status === "ready" || integrationReadiness().linearPersonal === "configured" },
+    { label: "Connect Linear", href: `${base}/settings/connections`, done: linear.status === "ready" },
     { label: "Add a repository", href: `${base}/settings/connections`, done: props.hasRepository },
     { label: "Invite teammates", href: `${base}/settings/members`, done: props.hasTeammates },
   ];
